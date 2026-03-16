@@ -1,17 +1,22 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, Request
+import redis.asyncio as aioredis
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, Response
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
+from app.core.redis import get_redis_pool
 from app.core.security import decode_access_token
 from app.core.templates import templates
 from app.modules.auth.models import User
 from app.modules.auth.repository import UserRepository
+from app.modules.auth.schemas import UserUpdate
+from app.modules.auth.service import AuthService
+from app.modules.garden.categories import CATEGORY_ICONS, CATEGORY_ORDER, INTEREST_CATEGORIES
 from app.modules.garden.models import RelationshipTag
 from app.modules.garden.schemas import (
     CuriosityCreate,
@@ -23,7 +28,11 @@ from app.modules.garden.schemas import (
 )
 from app.modules.garden.service import GardenService
 from app.modules.journal.repository import JournalRepository
-from app.modules.journal.schemas import JournalEntryFilters
+from app.modules.journal.schemas import JournalEntryCreate, JournalEntryFilters
+from app.modules.notifications.repository import NotificationRepository
+from app.modules.prompts.cache import plot_prompt_key
+from app.modules.prompts.engine import PromptEngine
+from app.storage.s3 import ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, upload_image
 
 router = APIRouter(tags=["ui"])
 
@@ -53,6 +62,15 @@ def _redirect(url: str, status_code: int = 303) -> Response:
 
 def _hx_redirect(url: str) -> Response:
     return Response(status_code=200, headers={"HX-Redirect": url})
+
+
+def _get_redis_client() -> aioredis.Redis:
+    return aioredis.Redis(connection_pool=get_redis_pool())
+
+
+async def _get_nav_context(user: User | None, db: AsyncSession) -> dict:
+    count = await NotificationRepository().count_unread(db, user.id) if user else 0
+    return {"unread_count": count}
 
 
 # ── Auth pages ────────────────────────────────────────────────────────────────
@@ -91,11 +109,24 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)) -> Res
     recent_entries = await JournalRepository().list_for_user(
         db, user.id, JournalEntryFilters(), limit=3
     )
+
+    redis = _get_redis_client()
+    engine = PromptEngine(redis=redis)
+    try:
+        daily_prompt = await engine.get_daily_prompt(db, user.id)
+    except Exception:
+        daily_prompt = None
+    finally:
+        await redis.aclose()
+
+    nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("dashboard/index.html", {
         "request": request,
         "user": user,
         "recent_plots": plots[:3],
         "recent_entries": recent_entries,
+        "daily_prompt": daily_prompt,
+        **nav_ctx,
     })
 
 
@@ -108,10 +139,12 @@ async def garden_index(request: Request, db: AsyncSession = Depends(get_db)) -> 
         return _redirect("/auth/login")
 
     plots = await GardenService().list_plots(db, user.id)
+    nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("garden/index.html", {
         "request": request,
         "user": user,
         "plots": plots,
+        **nav_ctx,
     })
 
 
@@ -120,10 +153,12 @@ async def garden_new(request: Request, db: AsyncSession = Depends(get_db)) -> Re
     user = await _get_user(request, db)
     if not user:
         return _redirect("/auth/login")
+    nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("garden/plot_form.html", {
         "request": request,
         "user": user,
         "plot": None,
+        **nav_ctx,
     })
 
 
@@ -138,10 +173,66 @@ async def garden_edit(
         plot = await GardenService().get_plot(db, plot_id, user.id)
     except NotFoundError:
         return _redirect("/garden")
+    nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("garden/plot_form.html", {
         "request": request,
         "user": user,
         "plot": plot,
+        **nav_ctx,
+    })
+
+
+@router.get("/garden/{plot_id}/timeline", response_class=HTMLResponse)
+async def garden_timeline(
+    plot_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+    try:
+        plot = await GardenService().get_plot(db, plot_id, user.id)
+    except NotFoundError:
+        return _redirect("/garden")
+
+    entries = await JournalRepository().list_for_user(
+        db, user.id,
+        JournalEntryFilters(plot_id=plot_id),
+        limit=500,
+    )
+    nav_ctx = await _get_nav_context(user, db)
+    return templates.TemplateResponse("garden/timeline.html", {
+        "request": request,
+        "user": user,
+        "plot": plot,
+        "entries": entries,
+        **nav_ctx,
+    })
+
+
+@router.get("/garden/{plot_id}/prompts", response_class=HTMLResponse)
+async def plot_prompts(
+    plot_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+
+    redis = _get_redis_client()
+    engine = PromptEngine(redis=redis)
+    try:
+        result = await engine.get_plot_prompts(db, plot_id, user.id)
+    except Exception:
+        await redis.aclose()
+        return templates.TemplateResponse("partials/prompts_panel.html", {
+            "request": request,
+            "prompts": [],
+            "error": True,
+        })
+    await redis.aclose()
+    return templates.TemplateResponse("partials/prompts_panel.html", {
+        "request": request,
+        "prompts": result.prompts,
+        "error": False,
     })
 
 
@@ -156,10 +247,23 @@ async def garden_detail(
         plot = await GardenService().get_plot(db, plot_id, user.id)
     except NotFoundError:
         return _redirect("/garden")
+
+    recent_journal = await JournalRepository().list_for_user(
+        db, user.id,
+        JournalEntryFilters(plot_id=plot_id),
+        limit=3,
+    )
+    journal_total = await JournalRepository().count_for_plot(db, user.id, plot_id)
+    nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("garden/plot_detail.html", {
         "request": request,
         "user": user,
         "plot": plot,
+        "recent_journal": recent_journal,
+        "journal_total": journal_total,
+        "category_order": CATEGORY_ORDER,
+        "category_icons": CATEGORY_ICONS,
+        **nav_ctx,
     })
 
 
@@ -246,6 +350,36 @@ async def garden_connect(
     return Response(status_code=200)
 
 
+@router.post("/garden/{plot_id}/photo")
+async def garden_photo_upload(
+    plot_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    photo: UploadFile = File(...),
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+
+    if photo.content_type not in ALLOWED_IMAGE_TYPES:
+        return _redirect(f"/garden/{plot_id}?photo_error=type")
+
+    content = await photo.read()
+    if len(content) > MAX_IMAGE_BYTES:
+        return _redirect(f"/garden/{plot_id}?photo_error=size")
+
+    try:
+        url = upload_image(content, photo.content_type or "image/jpeg", str(user.id), scope="plots")
+    except Exception:
+        return _redirect(f"/garden/{plot_id}?photo_error=upload")
+
+    try:
+        await GardenService().update_plot(db, plot_id, user.id, PlotUpdate(photo_url=url))
+    except NotFoundError:
+        return _redirect("/garden")
+    return _redirect(f"/garden/{plot_id}")
+
+
 # ── Stories ───────────────────────────────────────────────────────────────────
 
 @router.get("/garden/{plot_id}/stories/new", response_class=HTMLResponse)
@@ -272,6 +406,9 @@ async def story_create(
     if not user:
         return HTMLResponse("", status_code=401)
     await GardenService().add_story(db, plot_id, user.id, StoryCreate(content=content))
+    redis = _get_redis_client()
+    await redis.delete(plot_prompt_key(str(user.id), str(plot_id)))
+    await redis.aclose()
     return _hx_redirect(f"/garden/{plot_id}")
 
 
@@ -301,6 +438,8 @@ async def detail_form(
     return templates.TemplateResponse("partials/detail_form.html", {
         "request": request,
         "plot_id": plot_id,
+        "interest_categories": INTEREST_CATEGORIES,
+        "category_order": CATEGORY_ORDER,
     })
 
 
@@ -320,6 +459,9 @@ async def detail_create(
         db, plot_id, user.id,
         DetailCreate(key=key, value=value, category=category or None),
     )
+    redis = _get_redis_client()
+    await redis.delete(plot_prompt_key(str(user.id), str(plot_id)))
+    await redis.aclose()
     return _hx_redirect(f"/garden/{plot_id}")
 
 
@@ -365,6 +507,9 @@ async def curiosity_create(
     await GardenService().add_curiosity(
         db, plot_id, user.id, CuriosityCreate(question=question)
     )
+    redis = _get_redis_client()
+    await redis.delete(plot_prompt_key(str(user.id), str(plot_id)))
+    await redis.aclose()
     return _hx_redirect(f"/garden/{plot_id}")
 
 
@@ -433,6 +578,9 @@ async def milestone_create(
             is_recurring=is_recurring == "true",
         ),
     )
+    redis = _get_redis_client()
+    await redis.delete(plot_prompt_key(str(user.id), str(plot_id)))
+    await redis.aclose()
     return _hx_redirect(f"/garden/{plot_id}")
 
 
@@ -450,7 +598,7 @@ async def milestone_delete(
     return Response(status_code=200)
 
 
-# ── Journal page ──────────────────────────────────────────────────────────────
+# ── Journal pages ─────────────────────────────────────────────────────────────
 
 @router.get("/journal", response_class=HTMLResponse)
 async def journal_index(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
@@ -461,8 +609,239 @@ async def journal_index(request: Request, db: AsyncSession = Depends(get_db)) ->
     entries = await JournalRepository().list_for_user(
         db, user.id, JournalEntryFilters(), limit=50
     )
+    plots = await GardenService().list_plots(db, user.id)
+    plots_by_id = {str(p.id): p for p in plots}
+    nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("journal/index.html", {
         "request": request,
         "user": user,
         "entries": entries,
+        "plots_by_id": plots_by_id,
+        **nav_ctx,
     })
+
+
+@router.get("/journal/new", response_class=HTMLResponse)
+async def journal_new(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+
+    plots = await GardenService().list_plots(db, user.id)
+    selected_plot_id = request.query_params.get("plot_id", "")
+    nav_ctx = await _get_nav_context(user, db)
+    return templates.TemplateResponse("journal/entry_form.html", {
+        "request": request,
+        "user": user,
+        "plots": plots,
+        "selected_plot_id": selected_plot_id,
+        **nav_ctx,
+    })
+
+
+@router.post("/journal/new")
+async def journal_create(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    content: str = Form(...),
+    plot_id: str = Form(""),
+    mood_tag: str = Form(""),
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+
+    parsed_plot_id: UUID | None = None
+    if plot_id:
+        try:
+            parsed_plot_id = UUID(plot_id)
+        except ValueError:
+            pass
+
+    entry = await JournalRepository().create(
+        db, user.id,
+        JournalEntryCreate(
+            content=content,
+            plot_id=parsed_plot_id,
+            mood_tag=mood_tag or None,
+        ),
+    )
+    return _hx_redirect(f"/journal/{entry.id}")
+
+
+@router.get("/journal/{entry_id}", response_class=HTMLResponse)
+async def journal_detail(
+    entry_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+
+    entry = await JournalRepository().get_by_id_for_user(db, entry_id, user.id)
+    if not entry:
+        return _redirect("/journal")
+
+    plot = None
+    if entry.plot_id:
+        try:
+            plot = await GardenService().get_plot(db, entry.plot_id, user.id)
+        except NotFoundError:
+            pass
+
+    nav_ctx = await _get_nav_context(user, db)
+    return templates.TemplateResponse("journal/entry_detail.html", {
+        "request": request,
+        "user": user,
+        "entry": entry,
+        "plot": plot,
+        **nav_ctx,
+    })
+
+
+@router.post("/journal/{entry_id}/delete")
+async def journal_delete(
+    entry_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return Response(status_code=401)
+
+    entry = await JournalRepository().get_by_id_for_user(db, entry_id, user.id)
+    if entry:
+        await JournalRepository().delete(db, entry)
+    return Response(status_code=200)
+
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+
+@router.get("/notifications", response_class=HTMLResponse)
+async def notifications_page(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+
+    repo = NotificationRepository()
+    notifications = await repo.list_for_user(db, user.id, limit=50)
+    nav_ctx = await _get_nav_context(user, db)
+    return templates.TemplateResponse("notifications/index.html", {
+        "request": request,
+        "user": user,
+        "notifications": notifications,
+        **nav_ctx,
+    })
+
+
+@router.get("/notifications/dropdown", response_class=HTMLResponse)
+async def notifications_dropdown(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+
+    repo = NotificationRepository()
+    notifications = await repo.list_for_user(db, user.id, unread_only=True, limit=10)
+    return templates.TemplateResponse("partials/notifications_dropdown.html", {
+        "request": request,
+        "notifications": notifications,
+    })
+
+
+@router.get("/notifications/badge", response_class=HTMLResponse)
+async def notifications_badge(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    user = await _get_user(request, db)
+    count = await NotificationRepository().count_unread(db, user.id) if user else 0
+    if count > 0:
+        return HTMLResponse(
+            f'<span id="notif-badge" class="absolute -top-1 -right-1 bg-warm-clay text-cream text-xs'
+            f' w-4 h-4 rounded-full flex items-center justify-center font-medium">{count}</span>'
+        )
+    return HTMLResponse('<span id="notif-badge"></span>')
+
+
+@router.post("/notifications/{notification_id}/read")
+async def notification_mark_read_ui(
+    notification_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return Response(status_code=401)
+    repo = NotificationRepository()
+    notif = await repo.get_by_id_for_user(db, notification_id, user.id)
+    if notif:
+        await repo.mark_read(db, notif)
+    return _hx_redirect("/notifications")
+
+
+@router.post("/notifications/read-all")
+async def notifications_mark_all_read_ui(
+    request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return Response(status_code=401)
+    await NotificationRepository().mark_all_read(db, user.id)
+    return _hx_redirect("/notifications")
+
+
+# ── Profile ───────────────────────────────────────────────────────────────────
+
+@router.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+    nav_ctx = await _get_nav_context(user, db)
+    return templates.TemplateResponse("profile/index.html", {
+        "request": request,
+        "user": user,
+        **nav_ctx,
+    })
+
+
+@router.post("/profile")
+async def profile_update(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    display_name: str = Form(...),
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+
+    redis = _get_redis_client()
+    service = AuthService(user_repo=UserRepository(), redis=redis)
+    try:
+        await service.update_profile(db, user, UserUpdate(display_name=display_name))
+    finally:
+        await redis.aclose()
+    return _redirect("/profile")
+
+
+@router.post("/profile/avatar")
+async def profile_avatar_upload(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    avatar: UploadFile = File(...),
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+
+    if avatar.content_type not in ALLOWED_IMAGE_TYPES:
+        return _redirect("/profile?avatar_error=type")
+
+    content = await avatar.read()
+    if len(content) > MAX_IMAGE_BYTES:
+        return _redirect("/profile?avatar_error=size")
+
+    try:
+        url = upload_image(content, avatar.content_type or "image/jpeg", str(user.id), scope="avatars")
+    except Exception:
+        return _redirect("/profile?avatar_error=upload")
+
+    redis = _get_redis_client()
+    service = AuthService(user_repo=UserRepository(), redis=redis)
+    try:
+        await service.update_profile(db, user, UserUpdate(avatar_url=url))
+    finally:
+        await redis.aclose()
+    return _redirect("/profile")

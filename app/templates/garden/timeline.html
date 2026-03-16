@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ plot.display_name }} · Timeline · Trellis{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-8">
+
+  <!-- Back link -->
+  <a href="/garden/{{ plot.id }}" class="inline-flex items-center gap-1.5 text-sm text-loam/50 hover:text-bark transition-colors mb-6">
+    ← Back to {{ plot.display_name }}
+  </a>
+
+  <!-- Header -->
+  <div class="flex items-center gap-4 mb-8">
+    {% if plot.photo_url %}
+      <img src="{{ plot.photo_url }}" alt="{{ plot.display_name }}"
+           class="w-14 h-14 rounded-full object-cover shadow-sm flex-shrink-0" />
+    {% else %}
+      <div class="w-14 h-14 rounded-full bg-light-sage flex items-center justify-center shadow-sm flex-shrink-0">
+        <span class="text-sage-green font-heading font-bold text-2xl">{{ plot.display_name[0] }}</span>
+      </div>
+    {% endif %}
+    <div class="flex-1 min-w-0">
+      <h1 class="font-heading font-bold text-2xl text-bark">{{ plot.display_name }}</h1>
+      <p class="text-sm text-loam/50 mt-0.5">
+        Connection Timeline ·
+        {% if entries|length == 1 %}1 entry{% else %}{{ entries|length }} entries{% endif %}
+      </p>
+    </div>
+    <a href="/journal/new?plot_id={{ plot.id }}"
+       class="flex-shrink-0 text-sm bg-deep-moss text-cream px-4 py-2 rounded-lg hover:bg-bark transition-colors">
+      + Log conversation
+    </a>
+  </div>
+
+  {% if entries %}
+    {% set ns = namespace(current_month='') %}
+    <div class="relative">
+      <!-- Vertical timeline rail -->
+      <div class="absolute left-6 top-3 bottom-3 w-px bg-light-sage"></div>
+
+      <div class="space-y-0">
+        {% for entry in entries %}
+          {% set entry_month = entry.created_at.strftime('%B %Y') %}
+
+          {% if entry_month != ns.current_month %}
+            {% set ns.current_month = entry_month %}
+            <!-- Month group header -->
+            <div class="relative flex items-center {% if not loop.first %}mt-8{% endif %} mb-4">
+              <div class="w-12 flex-shrink-0 flex justify-center">
+                <div class="w-2 h-2 rounded-full bg-light-sage border border-sage-green/30 z-10"></div>
+              </div>
+              <p class="ml-4 text-xs font-medium text-loam/40 uppercase tracking-widest">{{ entry_month }}</p>
+            </div>
+          {% endif %}
+
+          <!-- Entry row -->
+          <div class="relative flex items-start gap-4 pb-3">
+            <!-- Timeline node -->
+            <div class="flex-shrink-0 w-12 flex items-start justify-center pt-4">
+              <div class="w-2.5 h-2.5 rounded-full bg-sage-green/70 border-2 border-white shadow-sm z-10"></div>
+            </div>
+
+            <!-- Entry card -->
+            <a href="/journal/{{ entry.id }}"
+               class="flex-1 bg-white rounded-card border border-light-sage p-4 hover:border-sage-green transition-colors group mb-1">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs text-loam/40">{{ entry.created_at.strftime('%A, %B %-d') }}</p>
+                {% if entry.mood_tag %}
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-light-sage text-sage-green capitalize flex-shrink-0 ml-2">
+                    {{ entry.mood_tag }}
+                  </span>
+                {% endif %}
+              </div>
+              <p class="text-sm text-loam leading-relaxed">{{ entry.content }}</p>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  {% else %}
+    <div class="text-center py-16">
+      <p class="font-accent text-xl text-loam/50 mb-6">No conversations logged yet.</p>
+      <a href="/journal/new?plot_id={{ plot.id }}"
+         class="inline-block text-sm bg-deep-moss text-cream px-6 py-2.5 rounded-lg hover:bg-bark transition-colors">
+        Log your first conversation
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.journal.models import JournalEntry
@@ -57,6 +57,17 @@ class JournalRepository:
         query = query.limit(limit).offset(offset)
         result = await db.execute(query)
         return list(result.scalars().all())
+
+    async def count_for_plot(
+        self, db: AsyncSession, user_id: UUID, plot_id: UUID
+    ) -> int:
+        result = await db.execute(
+            select(func.count()).where(
+                JournalEntry.user_id == user_id,
+                JournalEntry.plot_id == plot_id,
+            )
+        )
+        return result.scalar_one()
 
     async def update(
         self, db: AsyncSession, entry: JournalEntry, data: JournalEntryUpdate

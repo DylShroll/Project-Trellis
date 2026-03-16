@@ -3,25 +3,38 @@
 
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-8">
-  <div class="mb-6">
-    <h1 class="font-heading font-bold text-2xl text-bark">Journal</h1>
-    <p class="text-sm text-loam/60 mt-1">A record of your conversations and reflections.</p>
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="font-heading font-bold text-2xl text-bark">Journal</h1>
+      <p class="text-sm text-loam/60 mt-1">A record of your conversations and reflections.</p>
+    </div>
+    <a href="/journal/new"
+       class="bg-deep-moss text-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-bark transition-colors">
+      + New entry
+    </a>
   </div>
 
   {% if entries %}
     <div class="space-y-4">
       {% for entry in entries %}
-        <div class="bg-white rounded-card border border-light-sage p-5">
+        <a href="/journal/{{ entry.id }}" class="block bg-white rounded-card border border-light-sage p-5 hover:border-sage-green transition-colors group">
           <div class="flex items-start justify-between gap-4 mb-3">
             <p class="text-xs text-loam/40">{{ entry.created_at.strftime('%B %d, %Y') }}</p>
-            {% if entry.mood_tag %}
-              <span class="text-xs px-2 py-0.5 rounded-full bg-light-sage text-sage-green capitalize">
-                {{ entry.mood_tag }}
-              </span>
-            {% endif %}
+            <div class="flex items-center gap-2">
+              {% if entry.mood_tag %}
+                <span class="text-xs px-2 py-0.5 rounded-full bg-light-sage text-sage-green capitalize">
+                  {{ entry.mood_tag }}
+                </span>
+              {% endif %}
+            </div>
           </div>
-          <p class="text-sm text-loam leading-relaxed">{{ entry.content }}</p>
-        </div>
+          <p class="text-sm text-loam leading-relaxed line-clamp-3">{{ entry.content }}</p>
+          {% if entry.plot_id and plots_by_id and entry.plot_id|string in plots_by_id %}
+            <p class="mt-2 text-xs text-loam/40">
+              About {{ plots_by_id[entry.plot_id|string].display_name }}
+            </p>
+          {% endif %}
+        </a>
       {% endfor %}
     </div>
   {% else %}
@@ -31,6 +44,7 @@
       <p class="mt-2 text-sm text-loam/60 max-w-xs mx-auto">
         After a meaningful conversation, jot down what you learned and how you felt.
       </p>
+      <a href="/journal/new" class="inline-block mt-4 text-sm text-warm-clay hover:underline">Write your first entry →</a>
     </div>
   {% endif %}
 </div>

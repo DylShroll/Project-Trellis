@@ -6,13 +6,38 @@
 
   <!-- Header -->
   <div class="flex items-start gap-4 mb-8">
-    {% if plot.photo_url %}
-      <img src="{{ plot.photo_url }}" alt="{{ plot.display_name }}" class="w-20 h-20 rounded-full object-cover shadow-sm flex-shrink-0" />
-    {% else %}
-      <div class="w-20 h-20 rounded-full bg-light-sage flex items-center justify-center shadow-sm flex-shrink-0">
-        <span class="text-sage-green font-heading font-bold text-3xl">{{ plot.display_name[0] }}</span>
-      </div>
-    {% endif %}
+    <!-- Avatar with photo upload -->
+    <div class="relative flex-shrink-0 group/avatar">
+      {% if plot.photo_url %}
+        <img src="{{ plot.photo_url }}" alt="{{ plot.display_name }}"
+             class="w-20 h-20 rounded-full object-cover shadow-sm" />
+      {% else %}
+        <div class="w-20 h-20 rounded-full bg-light-sage flex items-center justify-center shadow-sm">
+          <span class="text-sage-green font-heading font-bold text-3xl">{{ plot.display_name[0] }}</span>
+        </div>
+      {% endif %}
+      <!-- Upload overlay -->
+      <label for="photo-input-{{ plot.id }}"
+             title="Upload photo"
+             class="absolute inset-0 rounded-full flex items-center justify-center bg-bark/0 group-hover/avatar:bg-bark/40
+                    transition-colors cursor-pointer">
+        <span class="text-white text-xs opacity-0 group-hover/avatar:opacity-100 transition-opacity font-medium leading-tight text-center px-1">
+          Change<br>photo
+        </span>
+      </label>
+      <form id="photo-form-{{ plot.id }}"
+            action="/garden/{{ plot.id }}/photo"
+            method="POST"
+            enctype="multipart/form-data"
+            class="hidden">
+        <input id="photo-input-{{ plot.id }}"
+               type="file"
+               name="photo"
+               accept="image/jpeg,image/png,image/webp"
+               onchange="document.getElementById('photo-form-{{ plot.id }}').submit()" />
+      </form>
+    </div>
+
     <div class="flex-1 min-w-0">
       <h1 class="font-heading font-bold text-2xl text-bark">{{ plot.display_name }}</h1>
       <span class="inline-block mt-1 text-xs px-3 py-1 rounded-full bg-light-sage text-sage-green capitalize">
@@ -30,7 +55,16 @@
           class="text-xs text-warm-clay hover:text-bark transition-colors"
         >Mark connected today</button>
       </div>
+      {% if request.query_params.get('photo_error') %}
+        {% set pe = request.query_params.get('photo_error') %}
+        <p class="mt-2 text-xs text-warm-clay">
+          {% if pe == 'type' %}Only JPEG, PNG, and WebP images are accepted.
+          {% elif pe == 'size' %}Image must be under 2 MB.
+          {% else %}Image upload failed — check S3 configuration.{% endif %}
+        </p>
+      {% endif %}
     </div>
+
     <div class="flex items-center gap-3 flex-shrink-0">
       <a href="/garden/{{ plot.id }}/edit" class="text-sm text-loam/50 hover:text-bark transition-colors">Edit</a>
       <button
@@ -81,7 +115,7 @@
     {% endif %}
   </section>
 
-  <!-- Details -->
+  <!-- Details (grouped by interest category) -->
   <section class="mb-8">
     <div class="flex items-center justify-between mb-3">
       <h2 class="font-heading font-semibold text-lg text-bark">Details
@@ -96,31 +130,67 @@
     </div>
     <div id="detail-form" class="mb-3"></div>
     {% if plot.details %}
+      {# Build category → details mapping #}
       {% set by_category = {} %}
       {% for detail in plot.details %}
         {% set cat = detail.category or 'General' %}
         {% if cat not in by_category %}{% set _ = by_category.update({cat: []}) %}{% endif %}
         {% set _ = by_category[cat].append(detail) %}
       {% endfor %}
-      {% for cat, items in by_category.items() %}
-        {% if by_category|length > 1 %}
-          <p class="text-xs text-loam/40 uppercase tracking-wide mb-2 mt-3 first:mt-0">{{ cat }}</p>
+
+      {# Render in predefined order, then any remaining #}
+      {% set rendered_cats = [] %}
+      {% for cat in category_order %}
+        {% if cat in by_category %}
+          {% set _ = rendered_cats.append(cat) %}
+          <div class="mb-5">
+            {% if by_category|length > 1 %}
+              <div class="flex items-center gap-1.5 mb-2">
+                <span class="text-loam/30 text-sm">{{ category_icons.get(cat, '·') }}</span>
+                <p class="text-xs text-loam/40 uppercase tracking-wide font-medium">{{ cat }}</p>
+              </div>
+            {% endif %}
+            <dl class="grid grid-cols-2 gap-2">
+              {% for detail in by_category[cat] %}
+                <div id="detail-{{ detail.id }}" class="bg-sandstone rounded-lg p-3 group relative">
+                  <dt class="text-xs text-loam/50 uppercase tracking-wide">{{ detail.key }}</dt>
+                  <dd class="mt-1 text-sm text-bark font-medium">{{ detail.value }}</dd>
+                  <button
+                    hx-delete="/garden/{{ plot.id }}/details/{{ detail.id }}"
+                    hx-target="#detail-{{ detail.id }}"
+                    hx-swap="outerHTML"
+                    hx-confirm="Delete this detail?"
+                    class="absolute top-2 right-2 text-xs text-loam/20 hover:text-warm-clay transition-colors opacity-0 group-hover:opacity-100"
+                  >✕</button>
+                </div>
+              {% endfor %}
+            </dl>
+          </div>
         {% endif %}
-        <dl class="grid grid-cols-2 gap-2">
-          {% for detail in items %}
-            <div id="detail-{{ detail.id }}" class="bg-sandstone rounded-lg p-3 group relative">
-              <dt class="text-xs text-loam/50 uppercase tracking-wide">{{ detail.key }}</dt>
-              <dd class="mt-1 text-sm text-bark font-medium">{{ detail.value }}</dd>
-              <button
-                hx-delete="/garden/{{ plot.id }}/details/{{ detail.id }}"
-                hx-target="#detail-{{ detail.id }}"
-                hx-swap="outerHTML"
-                hx-confirm="Delete this detail?"
-                class="absolute top-2 right-2 text-xs text-loam/20 hover:text-warm-clay transition-colors opacity-0 group-hover:opacity-100"
-              >✕</button>
-            </div>
-          {% endfor %}
-        </dl>
+      {% endfor %}
+
+      {# Any categories not in predefined order #}
+      {% for cat, items in by_category.items() %}
+        {% if cat not in rendered_cats %}
+          <div class="mb-5">
+            <p class="text-xs text-loam/40 uppercase tracking-wide font-medium mb-2">{{ cat }}</p>
+            <dl class="grid grid-cols-2 gap-2">
+              {% for detail in items %}
+                <div id="detail-{{ detail.id }}" class="bg-sandstone rounded-lg p-3 group relative">
+                  <dt class="text-xs text-loam/50 uppercase tracking-wide">{{ detail.key }}</dt>
+                  <dd class="mt-1 text-sm text-bark font-medium">{{ detail.value }}</dd>
+                  <button
+                    hx-delete="/garden/{{ plot.id }}/details/{{ detail.id }}"
+                    hx-target="#detail-{{ detail.id }}"
+                    hx-swap="outerHTML"
+                    hx-confirm="Delete this detail?"
+                    class="absolute top-2 right-2 text-xs text-loam/20 hover:text-warm-clay transition-colors opacity-0 group-hover:opacity-100"
+                  >✕</button>
+                </div>
+              {% endfor %}
+            </dl>
+          </div>
+        {% endif %}
       {% endfor %}
     {% else %}
       <p class="text-sm text-loam/50 italic">No details yet. Birthday? Favourite coffee order? Add what matters.</p>
@@ -175,7 +245,7 @@
   </section>
 
   <!-- Milestones -->
-  <section>
+  <section class="mb-8">
     <div class="flex items-center justify-between mb-3">
       <h2 class="font-heading font-semibold text-lg text-bark">Milestones
         {% if plot.milestones %}<span class="ml-1 text-sm font-normal text-loam/40">({{ plot.milestones|length }})</span>{% endif %}
@@ -210,6 +280,65 @@
       </ul>
     {% else %}
       <p class="text-sm text-loam/50 italic">No milestones yet. Birthdays, anniversaries, important dates.</p>
+    {% endif %}
+  </section>
+
+  <!-- Conversation Starters (HTMX lazy load) -->
+  <section class="mb-8">
+    <h2 class="font-heading font-semibold text-lg text-bark mb-3">Conversation starters</h2>
+    <div id="prompts-panel"
+         hx-get="/garden/{{ plot.id }}/prompts"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <!-- skeleton -->
+      <div class="space-y-3">
+        <div class="h-14 bg-light-sage/40 rounded-lg animate-pulse"></div>
+        <div class="h-14 bg-light-sage/40 rounded-lg animate-pulse"></div>
+        <div class="h-14 bg-light-sage/40 rounded-lg animate-pulse"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Conversations (recent journal entries + timeline link) -->
+  <section>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-heading font-semibold text-lg text-bark">
+        Conversations
+        {% if journal_total %}
+          <span class="ml-1 text-sm font-normal text-loam/40">({{ journal_total }})</span>
+        {% endif %}
+      </h2>
+      <div class="flex items-center gap-4">
+        {% if journal_total > 3 %}
+          <a href="/garden/{{ plot.id }}/timeline"
+             class="text-sm text-loam/40 hover:text-bark transition-colors">View all →</a>
+        {% endif %}
+        <a href="/journal/new?plot_id={{ plot.id }}"
+           class="text-sm text-warm-clay hover:text-bark transition-colors">+ Log conversation</a>
+      </div>
+    </div>
+    {% if recent_journal %}
+      <div class="space-y-3">
+        {% for entry in recent_journal %}
+          <a href="/journal/{{ entry.id }}" class="block bg-white rounded-card border border-light-sage p-4 hover:border-sage-green transition-colors group">
+            <p class="text-sm text-loam leading-relaxed line-clamp-2">{{ entry.content }}</p>
+            <div class="mt-2 flex items-center justify-between">
+              <p class="text-xs text-loam/40">{{ entry.created_at.strftime('%b %d, %Y') }}</p>
+              {% if entry.mood_tag %}
+                <span class="text-xs px-2 py-0.5 rounded-full bg-light-sage text-sage-green capitalize">{{ entry.mood_tag }}</span>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+      {% if journal_total > 3 %}
+        <a href="/garden/{{ plot.id }}/timeline"
+           class="mt-3 inline-block text-sm text-loam/40 hover:text-bark transition-colors">
+          View full timeline ({{ journal_total }} entries) →
+        </a>
+      {% endif %}
+    {% else %}
+      <p class="text-sm text-loam/50 italic">No conversations logged yet.</p>
     {% endif %}
   </section>
 

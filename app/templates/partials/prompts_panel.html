@@ -1,0 +1,11 @@
+{% if error or not prompts %}
+  <p class="text-sm text-loam/50 italic">Couldn't load prompts right now. Try refreshing.</p>
+{% else %}
+  <div class="space-y-3">
+    {% for prompt in prompts %}
+      <div class="border-l-4 border-sage-green bg-white rounded-r-card px-5 py-4">
+        <p class="font-accent text-base text-bark leading-snug">{{ prompt }}</p>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

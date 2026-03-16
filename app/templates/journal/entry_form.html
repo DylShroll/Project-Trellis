@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}New Journal Entry · Trellis{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-8">
+  <h1 class="font-heading font-bold text-2xl text-bark mb-6">New Journal Entry</h1>
+
+  <div class="bg-white rounded-card border border-light-sage p-8">
+    <form
+      hx-post="/journal/new"
+      hx-target="#form-error"
+      hx-swap="innerHTML"
+      class="space-y-5"
+    >
+      <div id="form-error" class="text-warm-clay text-sm"></div>
+
+      <div>
+        <label class="block text-sm font-medium text-bark mb-1">Entry</label>
+        <textarea
+          name="content" required rows="6"
+          class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+                 focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent resize-none"
+          placeholder="What happened? What did you learn? How did it feel?"
+        ></textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-bark mb-1">Linked person <span class="text-loam/40 font-normal">(optional)</span></label>
+        <select
+          name="plot_id"
+          class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+                 focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+        >
+          <option value="">— None —</option>
+          {% for plot in plots %}
+            <option value="{{ plot.id }}" {% if selected_plot_id and plot.id|string == selected_plot_id %}selected{% endif %}>
+              {{ plot.display_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-bark mb-1">Mood <span class="text-loam/40 font-normal">(optional)</span></label>
+        <select
+          name="mood_tag"
+          class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+                 focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+        >
+          <option value="">— None —</option>
+          <option value="reflective">Reflective</option>
+          <option value="grateful">Grateful</option>
+          <option value="curious">Curious</option>
+          <option value="concerned">Concerned</option>
+          <option value="joyful">Joyful</option>
+        </select>
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button
+          type="submit"
+          class="flex-1 bg-deep-moss text-cream font-medium py-2.5 rounded-lg hover:bg-bark transition-colors text-sm"
+        >
+          Save Entry
+        </button>
+        <a
+          href="/journal"
+          class="flex-1 text-center bg-sandstone text-loam font-medium py-2.5 rounded-lg hover:bg-light-sage transition-colors text-sm"
+        >
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

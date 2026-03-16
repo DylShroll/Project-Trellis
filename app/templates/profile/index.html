@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Profile · Trellis{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-8">
+  <h1 class="font-heading font-bold text-2xl text-bark mb-6">Your Profile</h1>
+
+  <!-- Avatar section -->
+  <div class="bg-white rounded-card border border-light-sage p-8 mb-6">
+    <h2 class="font-heading font-semibold text-bark mb-4">Photo</h2>
+    <div class="flex items-center gap-6">
+      <!-- Current avatar -->
+      <div class="relative flex-shrink-0 group/avt">
+        {% if user.avatar_url %}
+          <img src="{{ user.avatar_url }}" alt="{{ user.display_name }}"
+               class="w-20 h-20 rounded-full object-cover shadow-sm" />
+        {% else %}
+          <div class="w-20 h-20 rounded-full bg-light-sage flex items-center justify-center shadow-sm">
+            <span class="font-heading font-bold text-3xl text-sage-green">{{ user.display_name[0] }}</span>
+          </div>
+        {% endif %}
+        <label for="avatar-input"
+               title="Upload photo"
+               class="absolute inset-0 rounded-full flex items-center justify-center bg-bark/0 group-hover/avt:bg-bark/40
+                      transition-colors cursor-pointer">
+          <span class="text-white text-xs opacity-0 group-hover/avt:opacity-100 transition-opacity font-medium leading-tight text-center px-1">
+            Change<br>photo
+          </span>
+        </label>
+      </div>
+
+      <div class="flex-1">
+        <p class="text-sm text-loam/70 mb-3">
+          Upload a profile photo — JPEG, PNG, or WebP up to 2 MB.
+        </p>
+        <form action="/profile/avatar" method="POST" enctype="multipart/form-data" id="avatar-form">
+          <label for="avatar-input"
+                 class="inline-block text-sm bg-sandstone text-loam border border-light-sage px-4 py-2 rounded-lg
+                        hover:bg-light-sage transition-colors cursor-pointer">
+            Choose file
+          </label>
+          <input id="avatar-input" type="file" name="avatar"
+                 accept="image/jpeg,image/png,image/webp"
+                 class="hidden"
+                 onchange="document.getElementById('avatar-form').submit()" />
+        </form>
+
+        {% if request.query_params.get('avatar_error') %}
+          {% set ae = request.query_params.get('avatar_error') %}
+          <p class="mt-2 text-xs text-warm-clay">
+            {% if ae == 'type' %}Only JPEG, PNG, and WebP images are accepted.
+            {% elif ae == 'size' %}Image must be under 2 MB.
+            {% else %}Image upload failed — check S3 configuration.{% endif %}
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Account section -->
+  <div class="bg-white rounded-card border border-light-sage p-8 mb-6">
+    <h2 class="font-heading font-semibold text-bark mb-4">Account</h2>
+    <form
+      hx-post="/profile"
+      hx-target="#profile-error"
+      hx-swap="innerHTML"
+      class="space-y-5"
+    >
+      <div id="profile-error" class="text-warm-clay text-sm"></div>
+
+      <div>
+        <label class="block text-sm font-medium text-bark mb-1">Display name</label>
+        <input
+          name="display_name" type="text" required maxlength="100"
+          value="{{ user.display_name }}"
+          class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+                 focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-bark mb-1">Email</label>
+        <input
+          type="email" disabled
+          value="{{ user.email }}"
+          class="w-full rounded-lg border border-light-sage bg-sandstone/50 px-4 py-2.5 text-sm text-loam/50 cursor-not-allowed"
+        />
+        <p class="mt-1 text-xs text-loam/40">Email cannot be changed.</p>
+      </div>
+
+      <button
+        type="submit"
+        class="w-full bg-deep-moss text-cream font-medium py-2.5 rounded-lg hover:bg-bark transition-colors text-sm"
+      >
+        Save Changes
+      </button>
+    </form>
+  </div>
+
+  <!-- Preferences section -->
+  <div class="bg-white rounded-card border border-light-sage p-8 mb-6">
+    <h2 class="font-heading font-semibold text-bark mb-2">Preferences</h2>
+    <p class="text-sm text-loam/50">Notification preferences coming soon.</p>
+  </div>
+
+  <!-- Danger zone -->
+  <div class="bg-white rounded-card border border-warm-clay/20 p-8">
+    <h2 class="font-heading font-semibold text-warm-clay mb-2">Danger zone</h2>
+    <p class="text-sm text-loam/60 mb-4">Permanently delete your account and all data. This cannot be undone.</p>
+    <a href="#"
+       class="inline-block text-sm text-warm-clay border border-warm-clay/40 px-4 py-2 rounded-lg hover:bg-warm-clay/5 transition-colors">
+      Delete account
+    </a>
+  </div>
+</div>
+{% endblock %}

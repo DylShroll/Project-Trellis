@@ -1,0 +1,19 @@
+{% if notifications %}
+  <div class="space-y-1">
+    {% for notif in notifications %}
+      <div class="px-4 py-3 hover:bg-sandstone transition-colors">
+        <p class="text-sm text-loam leading-snug line-clamp-2">
+          {{ notif.payload.get('message', 'Notification') }}
+        </p>
+        <p class="mt-0.5 text-xs text-loam/40">{{ notif.created_at.strftime('%b %d') }}</p>
+      </div>
+    {% endfor %}
+    <div class="px-4 py-2 border-t border-light-sage">
+      <a href="/notifications" class="text-xs text-warm-clay hover:underline">View all</a>
+    </div>
+  </div>
+{% else %}
+  <div class="px-4 py-6 text-center">
+    <p class="text-sm text-loam/50">No new notifications</p>
+  </div>
+{% endif %}

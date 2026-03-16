@@ -1,3 +1,5 @@
+import uuid as _uuid
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -50,3 +52,32 @@ def delete_object(object_key: str) -> None:
 
 def build_object_key(user_id: str, plot_id: str, filename: str) -> str:
     return f"profiles/{user_id}/{plot_id}/{filename}"
+
+
+_MIME_TO_EXT: dict[str, str] = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+}
+
+ALLOWED_IMAGE_TYPES: frozenset[str] = frozenset(_MIME_TO_EXT)
+MAX_IMAGE_BYTES: int = 2 * 1024 * 1024  # 2 MB
+
+
+def upload_image(data: bytes, content_type: str, user_id: str, scope: str = "uploads") -> str:
+    """Upload raw image bytes to S3 and return the public object URL.
+
+    Raises ``ClientError`` or ``ValueError`` on failure.
+    """
+    ext = _MIME_TO_EXT.get(content_type, "jpg")
+    key = f"{scope}/{user_id}/{_uuid.uuid4()}.{ext}"
+    client = get_s3_client()
+    client.put_object(
+        Bucket=settings.s3_bucket_name,
+        Key=key,
+        Body=data,
+        ContentType=content_type,
+    )
+    return f"https://{settings.s3_bucket_name}.s3.{settings.aws_region}.amazonaws.com/{key}"

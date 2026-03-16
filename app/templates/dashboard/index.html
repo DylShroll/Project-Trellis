@@ -9,13 +9,17 @@
   </div>
 
   <div class="grid gap-5">
-    <!-- Daily Curiosity (Phase 2: powered by Prompt Engine) -->
+    <!-- Daily Curiosity -->
     <div class="bg-deep-moss text-cream rounded-card p-6">
       <p class="text-xs uppercase tracking-widest text-light-sage/60 mb-2">Today's curiosity</p>
-      <p class="font-accent text-xl leading-relaxed">
-        Who in your life has been on your mind lately? Reach out and ask how they're really doing.
-      </p>
-      <p class="mt-3 text-xs text-light-sage/50">Powered by Trellis — personalized prompts arrive in Phase 2</p>
+      {% if daily_prompt %}
+        <p class="font-accent text-xl leading-relaxed">{{ daily_prompt.prompts[0] }}</p>
+        <p class="mt-3 text-xs text-light-sage/50">About {{ daily_prompt.plot_name }} · refreshes daily</p>
+      {% else %}
+        <p class="font-accent text-xl text-light-sage/70">
+          Add someone to your garden to receive your first prompt.
+        </p>
+      {% endif %}
     </div>
 
     <!-- Recent Garden -->

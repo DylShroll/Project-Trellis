@@ -4,44 +4,55 @@
   hx-swap="innerHTML"
   class="space-y-3 mb-4"
 >
+  <!-- Category selector -->
+  <div>
+    <label class="block text-xs text-loam/60 mb-1">Category</label>
+    <select
+      name="category"
+      id="detail-cat-select"
+      onchange="trellisUpdateKeyList(this.value)"
+      class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-2 text-sm text-loam
+             focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+    >
+      <option value="">— select a category —</option>
+      {% for cat in category_order %}
+        <option value="{{ cat }}">{{ cat }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Label + Value side by side -->
   <div class="grid grid-cols-2 gap-3">
     <div>
       <label class="block text-xs text-loam/60 mb-1">Label</label>
       <input
         name="key"
+        id="detail-key-input"
         type="text"
         required
         maxlength="100"
-        placeholder="e.g. Birthday, Coffee order"
+        list="detail-key-suggestions"
+        placeholder="e.g. Favourite songs"
         class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-2 text-sm text-loam
                focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
       />
+      <datalist id="detail-key-suggestions"></datalist>
     </div>
     <div>
-      <label class="block text-xs text-loam/60 mb-1">Category (optional)</label>
+      <label class="block text-xs text-loam/60 mb-1">Value</label>
       <input
-        name="category"
+        name="value"
         type="text"
-        maxlength="50"
-        placeholder="e.g. Personal, Work"
+        required
+        maxlength="500"
+        autofocus
+        placeholder="e.g. Radiohead, oat flat white"
         class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-2 text-sm text-loam
                focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
       />
     </div>
   </div>
-  <div>
-    <label class="block text-xs text-loam/60 mb-1">Value</label>
-    <input
-      name="value"
-      type="text"
-      required
-      maxlength="500"
-      autofocus
-      placeholder="e.g. March 14, Oat flat white"
-      class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-2 text-sm text-loam
-             focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
-    />
-  </div>
+
   <div class="flex gap-2">
     <button
       type="submit"
@@ -54,3 +65,24 @@
     >Cancel</button>
   </div>
 </form>
+
+<script>
+(function () {
+  var KEYS = {{ interest_categories | tojson }};
+
+  window.trellisUpdateKeyList = function (cat) {
+    var dl = document.getElementById('detail-key-suggestions');
+    dl.innerHTML = '';
+    (KEYS[cat] || []).forEach(function (label) {
+      var opt = document.createElement('option');
+      opt.value = label;
+      dl.appendChild(opt);
+    });
+    // Pre-fill first suggestion as placeholder hint
+    var input = document.getElementById('detail-key-input');
+    if (KEYS[cat] && KEYS[cat].length) {
+      input.placeholder = KEYS[cat][0];
+    }
+  };
+})();
+</script>

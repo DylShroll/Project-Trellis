@@ -92,6 +92,7 @@ class PlotUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=100)
     relationship_tag: RelationshipTag | None = None
     custom_tag: str | None = None
+    photo_url: str | None = Field(default=None, max_length=500)
     last_connected: datetime | None = None
     is_archived: bool | None = None
 

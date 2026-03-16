@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Journal Entry · Trellis{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-8">
+
+  <!-- Header -->
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <a href="/journal" class="text-sm text-loam/50 hover:text-bark transition-colors">← Journal</a>
+      <p class="mt-3 text-sm text-loam/50">{{ entry.created_at.strftime('%B %d, %Y') }}</p>
+      {% if entry.mood_tag %}
+        <span class="inline-block mt-1 text-xs px-3 py-1 rounded-full bg-light-sage text-sage-green capitalize">
+          {{ entry.mood_tag }}
+        </span>
+      {% endif %}
+    </div>
+    <button
+      hx-post="/journal/{{ entry.id }}/delete"
+      hx-confirm="Delete this journal entry? This cannot be undone."
+      hx-target="body"
+      hx-swap="none"
+      hx-on::after-request="window.location.href='/journal'"
+      class="text-sm text-warm-clay/60 hover:text-warm-clay transition-colors"
+    >Delete</button>
+  </div>
+
+  <!-- Content -->
+  <div class="bg-white rounded-card border border-light-sage p-6 mb-6">
+    <p class="text-loam leading-relaxed whitespace-pre-wrap">{{ entry.content }}</p>
+  </div>
+
+  <!-- Linked plot -->
+  {% if plot %}
+    <div class="bg-sandstone rounded-card border border-light-sage p-5">
+      <p class="text-xs text-loam/40 uppercase tracking-wide mb-3">Linked to</p>
+      <a href="/garden/{{ plot.id }}" class="flex items-center gap-3 group">
+        {% if plot.photo_url %}
+          <img src="{{ plot.photo_url }}" alt="{{ plot.display_name }}"
+               class="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0" />
+        {% else %}
+          <div class="w-10 h-10 rounded-full bg-light-sage flex items-center justify-center shadow-sm flex-shrink-0">
+            <span class="text-sage-green font-heading font-bold text-base">{{ plot.display_name[0] }}</span>
+          </div>
+        {% endif %}
+        <div class="min-w-0">
+          <p class="font-medium text-bark group-hover:text-warm-clay transition-colors text-sm">{{ plot.display_name }}</p>
+          <p class="text-xs text-loam/50 capitalize">{{ plot.relationship_tag.replace('_', ' ') }}</p>
+        </div>
+        <span class="ml-auto text-loam/30 group-hover:text-warm-clay transition-colors text-sm">→</span>
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -26,7 +26,10 @@
       "Bash(curl -s -X POST http://localhost:8000/auth/register -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"test@trellis.app\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Password123!\"\"\"\",\"\"\"\"display_name\"\"\"\":\"\"\"\"Test User\"\"\"\"}')",
       "Bash(python3 -m json.tool)",
       "Bash(curl -sv -X POST http://localhost:8000/auth/register -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@trellis.app\"\",\"\"password\"\":\"\"Password123!\"\",\"\"display_name\"\":\"\"Test User\"\"}')",
-      "Bash(curl -s -X POST http://localhost:8000/auth/register -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@trellis.app\"\",\"\"password\"\":\"\"Password123\"\",\"\"display_name\"\":\"\"Test User\"\"}')"
+      "Bash(curl -s -X POST http://localhost:8000/auth/register -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@trellis.app\"\",\"\"password\"\":\"\"Password123\"\",\"\"display_name\"\":\"\"Test User\"\"}')",
+      "Bash(grep -r \"def \" /Users/dylanshroll/Desktop/Project-Trellis/app/modules/*/repository.py)",
+      "Bash(find /Users/dylanshroll/Desktop/Project-Trellis -type f -maxdepth 2 \\\\\\(-name requirements.txt -o -name *.md -o -name Dockerfile \\\\\\))",
+      "Bash(find /Users/dylanshroll/Desktop/Project-Trellis -not -path */.* -not -path */__pycache__/* -not -path *.egg-info* -not -path */.venv/* -type f)"
     ]
   }
 }

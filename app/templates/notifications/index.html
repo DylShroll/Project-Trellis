@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Notifications · Trellis{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="font-heading font-bold text-2xl text-bark">Notifications</h1>
+    {% if notifications %}
+      <button
+        hx-post="/notifications/read-all"
+        hx-target="body"
+        hx-swap="none"
+        hx-on::after-request="window.location.reload()"
+        class="text-sm text-warm-clay hover:text-bark transition-colors"
+      >Mark all read</button>
+    {% endif %}
+  </div>
+
+  {% if notifications %}
+    <div class="space-y-3">
+      {% for notif in notifications %}
+        <div class="bg-white rounded-card border {% if not notif.is_read %}border-sage-green{% else %}border-light-sage{% endif %} p-5">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm {% if not notif.is_read %}text-bark font-medium{% else %}text-loam/70{% endif %} leading-relaxed">
+                {{ notif.payload.get('message', 'Notification') }}
+              </p>
+              <p class="mt-1 text-xs text-loam/40">{{ notif.created_at.strftime('%B %d, %Y') }}</p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              {% if notif.payload.get('plot_id') %}
+                <a href="/garden/{{ notif.payload['plot_id'] }}"
+                   class="text-xs text-warm-clay hover:underline">View</a>
+              {% endif %}
+              {% if not notif.is_read %}
+                <button
+                  hx-post="/notifications/{{ notif.id }}/read"
+                  hx-target="body"
+                  hx-swap="none"
+                  hx-on::after-request="window.location.reload()"
+                  class="text-xs text-loam/40 hover:text-bark transition-colors"
+                >Dismiss</button>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-20">
+      <div class="text-6xl mb-4">🔔</div>
+      <h2 class="font-heading font-semibold text-xl text-bark">You're all caught up</h2>
+      <p class="mt-2 text-sm text-loam/60">Notifications about milestones and reconnections will appear here.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
