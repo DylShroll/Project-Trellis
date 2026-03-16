@@ -29,8 +29,6 @@ services:
 
   app:
     build: .
-    volumes:
-      - .:/app
     ports:
       - "8000:8000"
     env_file:
@@ -49,8 +47,6 @@ services:
   celery_worker:
     build: .
     command: celery -A app.workers.celery_app worker --loglevel=info
-    volumes:
-      - .:/app
     env_file:
       - .env
     environment:

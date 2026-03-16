@@ -1,5 +1,6 @@
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Form
+from fastapi.responses import HTMLResponse, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +9,7 @@ from app.core.dependencies import get_current_user
 from app.core.redis import get_redis
 from app.modules.auth.models import User
 from app.modules.auth.repository import UserRepository
+from app.core.config import get_settings
 from app.modules.auth.schemas import (
     LoginRequest,
     RefreshRequest,
@@ -17,6 +19,9 @@ from app.modules.auth.schemas import (
     UserUpdate,
 )
 from app.modules.auth.service import AuthService
+
+_settings = get_settings()
+_COOKIE_MAX_AGE = _settings.access_token_expire_minutes * 60
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -43,6 +48,51 @@ async def login(
 ) -> TokenResponse:
     _, tokens = await _service(redis).login(db, data.email, data.password)
     return tokens
+
+
+@router.post("/login/web", include_in_schema=False)
+async def login_web(
+    email: str = Form(...),
+    password: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),
+) -> Response:
+    from app.core.exceptions import UnauthorizedError
+    try:
+        _, tokens = await _service(redis).login(db, email, password)
+    except UnauthorizedError:
+        return HTMLResponse('<span class="text-warm-clay text-sm">Invalid email or password.</span>')
+    response = Response(status_code=200, headers={"HX-Redirect": "/"})
+    response.set_cookie(
+        "access_token", tokens.access_token,
+        max_age=_COOKIE_MAX_AGE, httponly=True, samesite="lax",
+    )
+    return response
+
+
+@router.post("/register/web", include_in_schema=False)
+async def register_web(
+    display_name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),
+) -> Response:
+    from app.core.exceptions import ConflictError
+    try:
+        _, tokens = await _service(redis).register(db, UserCreate(
+            display_name=display_name, email=email, password=password
+        ))
+    except ConflictError:
+        return HTMLResponse('<span class="text-warm-clay text-sm">An account with this email already exists.</span>')
+    except Exception:
+        return HTMLResponse('<span class="text-warm-clay text-sm">Something went wrong. Please try again.</span>')
+    response = Response(status_code=200, headers={"HX-Redirect": "/"})
+    response.set_cookie(
+        "access_token", tokens.access_token,
+        max_age=_COOKIE_MAX_AGE, httponly=True, samesite="lax",
+    )
+    return response
 
 
 @router.post("/login/form", response_model=TokenResponse, include_in_schema=False)

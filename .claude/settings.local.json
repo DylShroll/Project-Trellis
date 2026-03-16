@@ -21,7 +21,12 @@
       "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" -c \"import docx; print\\(''ok''\\)\")",
       "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" -m pip install python-docx)",
       "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" -m pip install python-docx --break-system-packages)",
-      "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" -c \":*)"
+      "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" -c \":*)",
+      "Bash(docker compose:*)",
+      "Bash(curl -s -X POST http://localhost:8000/auth/register -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"test@trellis.app\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Password123!\"\"\"\",\"\"\"\"display_name\"\"\"\":\"\"\"\"Test User\"\"\"\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -sv -X POST http://localhost:8000/auth/register -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@trellis.app\"\",\"\"password\"\":\"\"Password123!\"\",\"\"display_name\"\":\"\"Test User\"\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/auth/register -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@trellis.app\"\",\"\"password\"\":\"\"Password123\"\",\"\"display_name\"\":\"\"Test User\"\"}')"
     ]
   }
 }

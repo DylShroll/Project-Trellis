@@ -1,0 +1,28 @@
+<form
+  hx-post="/garden/{{ plot_id }}/curiosities/new"
+  hx-target="#curiosity-form"
+  hx-swap="innerHTML"
+  class="space-y-3 mb-4"
+>
+  <input
+    name="question"
+    type="text"
+    required
+    maxlength="500"
+    autofocus
+    placeholder="What do you want to know or ask them?"
+    class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+           focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+  />
+  <div class="flex gap-2">
+    <button
+      type="submit"
+      class="bg-deep-moss text-cream px-4 py-2 rounded-lg text-sm font-medium hover:bg-bark transition-colors"
+    >Add curiosity</button>
+    <button
+      type="button"
+      onclick="document.getElementById('curiosity-form').innerHTML = ''"
+      class="bg-sandstone text-loam px-4 py-2 rounded-lg text-sm hover:bg-light-sage transition-colors"
+    >Cancel</button>
+  </div>
+</form>

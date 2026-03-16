@@ -21,18 +21,24 @@ def upgrade() -> None:
     # Enable pgcrypto for gen_random_uuid()
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
 
-    # Enums
-    relationship_tag_enum = postgresql.ENUM(
-        "partner", "family", "close_friend", "friend", "colleague", "mentor", "community", "custom",
-        name="relationship_tag_enum",
-    )
-    relationship_tag_enum.create(op.get_bind(), checkfirst=True)
-
-    notification_type_enum = postgresql.ENUM(
-        "milestone_reminder", "reconnection_nudge", "daily_prompt",
-        name="notification_type_enum",
-    )
-    notification_type_enum.create(op.get_bind(), checkfirst=True)
+    # Enums — use DO block for idempotent creation
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE relationship_tag_enum AS ENUM (
+                'partner', 'family', 'close_friend', 'friend',
+                'colleague', 'mentor', 'community', 'custom'
+            );
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE notification_type_enum AS ENUM (
+                'milestone_reminder', 'reconnection_nudge', 'daily_prompt'
+            );
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$
+    """)
 
     # users
     op.create_table(
@@ -55,7 +61,7 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("display_name", sa.String(100), nullable=False),
-        sa.Column("relationship_tag", sa.Enum("partner", "family", "close_friend", "friend", "colleague", "mentor", "community", "custom", name="relationship_tag_enum"), nullable=False, server_default="friend"),
+        sa.Column("relationship_tag", postgresql.ENUM("partner", "family", "close_friend", "friend", "colleague", "mentor", "community", "custom", name="relationship_tag_enum", create_type=False), nullable=False, server_default="friend"),
         sa.Column("custom_tag", sa.String(50), nullable=True),
         sa.Column("photo_url", sa.String(500), nullable=True),
         sa.Column("last_connected", sa.DateTime(timezone=True), nullable=True),
@@ -131,7 +137,7 @@ def upgrade() -> None:
         "notifications",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("type", sa.Enum("milestone_reminder", "reconnection_nudge", "daily_prompt", name="notification_type_enum"), nullable=False),
+        sa.Column("type", postgresql.ENUM("milestone_reminder", "reconnection_nudge", "daily_prompt", name="notification_type_enum", create_type=False), nullable=False),
         sa.Column("payload", postgresql.JSONB(), server_default="{}", nullable=False),
         sa.Column("is_read", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("scheduled_at", sa.DateTime(timezone=True), nullable=True),

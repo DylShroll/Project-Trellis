@@ -16,7 +16,17 @@
 
       {% if plot.last_connected %}
         <p class="mt-2 text-xs text-loam/60">
-          Last connected {{ plot.last_connected.strftime('%b %d, %Y') }}
+          Connected {{ plot.last_connected.strftime('%b %d, %Y') }}
+        </p>
+      {% endif %}
+
+      {% set total = plot.stories|length + plot.details|length + plot.curiosities|length + plot.milestones|length %}
+      {% if total > 0 %}
+        <p class="mt-1.5 text-xs text-loam/40">
+          {% if plot.stories|length %}{{ plot.stories|length }} stor{{ 'y' if plot.stories|length == 1 else 'ies' }}{% endif %}
+          {% if plot.details|length %}{% if plot.stories|length %} · {% endif %}{{ plot.details|length }} detail{{ 's' if plot.details|length != 1 }}{% endif %}
+          {% if plot.curiosities|length %}{% if plot.stories|length or plot.details|length %} · {% endif %}{{ plot.curiosities|length }} curiosit{{ 'y' if plot.curiosities|length == 1 else 'ies' }}{% endif %}
+          {% if plot.milestones|length %}{% if plot.stories|length or plot.details|length or plot.curiosities|length %} · {% endif %}{{ plot.milestones|length }} milestone{{ 's' if plot.milestones|length != 1 }}{% endif %}
         </p>
       {% endif %}
     </div>

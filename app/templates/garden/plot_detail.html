@@ -3,45 +3,76 @@
 
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-8">
+
   <!-- Header -->
   <div class="flex items-start gap-4 mb-8">
     {% if plot.photo_url %}
-      <img src="{{ plot.photo_url }}" alt="{{ plot.display_name }}" class="w-20 h-20 rounded-full object-cover shadow-sm" />
+      <img src="{{ plot.photo_url }}" alt="{{ plot.display_name }}" class="w-20 h-20 rounded-full object-cover shadow-sm flex-shrink-0" />
     {% else %}
-      <div class="w-20 h-20 rounded-full bg-light-sage flex items-center justify-center shadow-sm">
+      <div class="w-20 h-20 rounded-full bg-light-sage flex items-center justify-center shadow-sm flex-shrink-0">
         <span class="text-sage-green font-heading font-bold text-3xl">{{ plot.display_name[0] }}</span>
       </div>
     {% endif %}
-    <div class="flex-1">
+    <div class="flex-1 min-w-0">
       <h1 class="font-heading font-bold text-2xl text-bark">{{ plot.display_name }}</h1>
       <span class="inline-block mt-1 text-xs px-3 py-1 rounded-full bg-light-sage text-sage-green capitalize">
         {{ plot.relationship_tag.replace('_', ' ') }}
       </span>
-      {% if plot.last_connected %}
-        <p class="mt-2 text-xs text-loam/60">Last connected {{ plot.last_connected.strftime('%B %d, %Y') }}</p>
-      {% endif %}
+      <div class="mt-2 flex items-center gap-3 flex-wrap">
+        {% if plot.last_connected %}
+          <p class="text-xs text-loam/60">Last connected {{ plot.last_connected.strftime('%B %d, %Y') }}</p>
+        {% endif %}
+        <button
+          hx-post="/garden/{{ plot.id }}/connect"
+          hx-target="body"
+          hx-swap="none"
+          hx-on::after-request="window.location.reload()"
+          class="text-xs text-warm-clay hover:text-bark transition-colors"
+        >Mark connected today</button>
+      </div>
     </div>
-    <a href="/garden/{{ plot.id }}/edit" class="text-sm text-warm-clay hover:text-bark">Edit</a>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <a href="/garden/{{ plot.id }}/edit" class="text-sm text-loam/50 hover:text-bark transition-colors">Edit</a>
+      <button
+        hx-delete="/garden/{{ plot.id }}"
+        hx-confirm="Remove {{ plot.display_name }} from your garden? This cannot be undone."
+        hx-target="body"
+        hx-swap="none"
+        hx-on::after-request="window.location.href='/garden'"
+        class="text-sm text-warm-clay/60 hover:text-warm-clay transition-colors"
+      >Remove</button>
+    </div>
   </div>
 
   <!-- Stories -->
   <section class="mb-8">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="font-heading font-semibold text-lg text-bark">Stories</h2>
+      <h2 class="font-heading font-semibold text-lg text-bark">Stories
+        {% if plot.stories %}<span class="ml-1 text-sm font-normal text-loam/40">({{ plot.stories|length }})</span>{% endif %}
+      </h2>
       <button
         hx-get="/garden/{{ plot.id }}/stories/new"
         hx-target="#story-form"
         hx-swap="innerHTML"
-        class="text-sm text-warm-clay hover:text-bark"
+        class="text-sm text-warm-clay hover:text-bark transition-colors"
       >+ Add</button>
     </div>
     <div id="story-form" class="mb-3"></div>
     {% if plot.stories %}
       <div class="space-y-3">
         {% for story in plot.stories %}
-          <div class="bg-white rounded-card border border-light-sage p-4 text-sm text-loam leading-relaxed">
-            {{ story.content }}
-            <p class="mt-2 text-xs text-loam/40">{{ story.created_at.strftime('%b %d, %Y') }}</p>
+          <div id="story-{{ story.id }}" class="bg-white rounded-card border border-light-sage p-4 group">
+            <p class="text-sm text-loam leading-relaxed">{{ story.content }}</p>
+            <div class="mt-2 flex items-center justify-between">
+              <p class="text-xs text-loam/40">{{ story.created_at.strftime('%b %d, %Y') }}</p>
+              <button
+                hx-delete="/garden/{{ plot.id }}/stories/{{ story.id }}"
+                hx-target="#story-{{ story.id }}"
+                hx-swap="outerHTML"
+                hx-confirm="Delete this story?"
+                class="text-xs text-loam/30 hover:text-warm-clay transition-colors opacity-0 group-hover:opacity-100"
+              >Delete</button>
+            </div>
           </div>
         {% endfor %}
       </div>
@@ -53,35 +84,88 @@
   <!-- Details -->
   <section class="mb-8">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="font-heading font-semibold text-lg text-bark">Details</h2>
-      <button class="text-sm text-warm-clay hover:text-bark">+ Add</button>
+      <h2 class="font-heading font-semibold text-lg text-bark">Details
+        {% if plot.details %}<span class="ml-1 text-sm font-normal text-loam/40">({{ plot.details|length }})</span>{% endif %}
+      </h2>
+      <button
+        hx-get="/garden/{{ plot.id }}/details/new"
+        hx-target="#detail-form"
+        hx-swap="innerHTML"
+        class="text-sm text-warm-clay hover:text-bark transition-colors"
+      >+ Add</button>
     </div>
+    <div id="detail-form" class="mb-3"></div>
     {% if plot.details %}
-      <dl class="grid grid-cols-2 gap-3">
-        {% for detail in plot.details %}
-          <div class="bg-sandstone rounded-lg p-3">
-            <dt class="text-xs text-loam/50 uppercase tracking-wide">{{ detail.key }}</dt>
-            <dd class="mt-1 text-sm text-bark font-medium">{{ detail.value }}</dd>
-          </div>
-        {% endfor %}
-      </dl>
+      {% set by_category = {} %}
+      {% for detail in plot.details %}
+        {% set cat = detail.category or 'General' %}
+        {% if cat not in by_category %}{% set _ = by_category.update({cat: []}) %}{% endif %}
+        {% set _ = by_category[cat].append(detail) %}
+      {% endfor %}
+      {% for cat, items in by_category.items() %}
+        {% if by_category|length > 1 %}
+          <p class="text-xs text-loam/40 uppercase tracking-wide mb-2 mt-3 first:mt-0">{{ cat }}</p>
+        {% endif %}
+        <dl class="grid grid-cols-2 gap-2">
+          {% for detail in items %}
+            <div id="detail-{{ detail.id }}" class="bg-sandstone rounded-lg p-3 group relative">
+              <dt class="text-xs text-loam/50 uppercase tracking-wide">{{ detail.key }}</dt>
+              <dd class="mt-1 text-sm text-bark font-medium">{{ detail.value }}</dd>
+              <button
+                hx-delete="/garden/{{ plot.id }}/details/{{ detail.id }}"
+                hx-target="#detail-{{ detail.id }}"
+                hx-swap="outerHTML"
+                hx-confirm="Delete this detail?"
+                class="absolute top-2 right-2 text-xs text-loam/20 hover:text-warm-clay transition-colors opacity-0 group-hover:opacity-100"
+              >✕</button>
+            </div>
+          {% endfor %}
+        </dl>
+      {% endfor %}
     {% else %}
-      <p class="text-sm text-loam/50 italic">No details yet. Birthday? Favorite coffee order? Add what matters.</p>
+      <p class="text-sm text-loam/50 italic">No details yet. Birthday? Favourite coffee order? Add what matters.</p>
     {% endif %}
   </section>
 
   <!-- Curiosities -->
   <section class="mb-8">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="font-heading font-semibold text-lg text-bark">Curiosities</h2>
-      <button class="text-sm text-warm-clay hover:text-bark">+ Add</button>
+      <h2 class="font-heading font-semibold text-lg text-bark">Curiosities
+        {% if plot.curiosities %}<span class="ml-1 text-sm font-normal text-loam/40">({{ plot.curiosities|length }})</span>{% endif %}
+      </h2>
+      <button
+        hx-get="/garden/{{ plot.id }}/curiosities/new"
+        hx-target="#curiosity-form"
+        hx-swap="innerHTML"
+        class="text-sm text-warm-clay hover:text-bark transition-colors"
+      >+ Add</button>
     </div>
+    <div id="curiosity-form" class="mb-3"></div>
     {% if plot.curiosities %}
       <ul class="space-y-2">
-        {% for curiosity in plot.curiosities %}
-          <li class="flex items-start gap-2 text-sm {% if curiosity.is_resolved %}text-loam/40 line-through{% else %}text-loam{% endif %}">
-            <span class="mt-0.5">{% if curiosity.is_resolved %}✓{% else %}○{% endif %}</span>
-            {{ curiosity.question }}
+        {% for c in plot.curiosities %}
+          <li id="curiosity-{{ c.id }}" class="flex items-start gap-2 group">
+            {% if c.is_resolved %}
+              <span class="mt-0.5 text-sage-green text-sm flex-shrink-0">✓</span>
+              <span class="text-sm text-loam/40 line-through flex-1">{{ c.question }}</span>
+            {% else %}
+              <button
+                hx-post="/garden/{{ plot.id }}/curiosities/{{ c.id }}/resolve"
+                hx-target="body"
+                hx-swap="none"
+                hx-on::after-request="window.location.reload()"
+                class="mt-0.5 text-loam/30 hover:text-sage-green transition-colors text-sm flex-shrink-0"
+                title="Mark as answered"
+              >○</button>
+              <span class="text-sm text-loam flex-1">{{ c.question }}</span>
+            {% endif %}
+            <button
+              hx-delete="/garden/{{ plot.id }}/curiosities/{{ c.id }}"
+              hx-target="#curiosity-{{ c.id }}"
+              hx-swap="outerHTML"
+              hx-confirm="Delete this curiosity?"
+              class="text-xs text-loam/20 hover:text-warm-clay transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+            >✕</button>
           </li>
         {% endfor %}
       </ul>
@@ -93,16 +177,34 @@
   <!-- Milestones -->
   <section>
     <div class="flex items-center justify-between mb-3">
-      <h2 class="font-heading font-semibold text-lg text-bark">Milestones</h2>
-      <button class="text-sm text-warm-clay hover:text-bark">+ Add</button>
+      <h2 class="font-heading font-semibold text-lg text-bark">Milestones
+        {% if plot.milestones %}<span class="ml-1 text-sm font-normal text-loam/40">({{ plot.milestones|length }})</span>{% endif %}
+      </h2>
+      <button
+        hx-get="/garden/{{ plot.id }}/milestones/new"
+        hx-target="#milestone-form"
+        hx-swap="innerHTML"
+        class="text-sm text-warm-clay hover:text-bark transition-colors"
+      >+ Add</button>
     </div>
+    <div id="milestone-form" class="mb-3"></div>
     {% if plot.milestones %}
       <ul class="space-y-2">
-        {% for milestone in plot.milestones %}
-          <li class="flex items-center gap-3 text-sm">
-            <span class="text-golden-hour">{% if milestone.is_recurring %}🔁{% else %}📅{% endif %}</span>
-            <span class="text-bark font-medium">{{ milestone.title }}</span>
-            <span class="text-loam/50">{{ milestone.date.strftime('%b %d') }}{% if milestone.is_recurring %} (yearly){% endif %}</span>
+        {% for m in plot.milestones %}
+          <li id="milestone-{{ m.id }}" class="flex items-center gap-3 group">
+            <span class="text-golden-hour flex-shrink-0">{% if m.is_recurring %}🔁{% else %}📅{% endif %}</span>
+            <span class="text-bark font-medium text-sm flex-1">{{ m.title }}</span>
+            <span class="text-loam/50 text-xs">{{ m.date.strftime('%b %d') }}{% if m.is_recurring %} · yearly{% endif %}</span>
+            {% if m.notes %}
+              <span class="text-loam/40 text-xs italic hidden sm:inline">{{ m.notes }}</span>
+            {% endif %}
+            <button
+              hx-delete="/garden/{{ plot.id }}/milestones/{{ m.id }}"
+              hx-target="#milestone-{{ m.id }}"
+              hx-swap="outerHTML"
+              hx-confirm="Delete this milestone?"
+              class="text-xs text-loam/20 hover:text-warm-clay transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+            >✕</button>
           </li>
         {% endfor %}
       </ul>
@@ -110,5 +212,6 @@
       <p class="text-sm text-loam/50 italic">No milestones yet. Birthdays, anniversaries, important dates.</p>
     {% endif %}
   </section>
+
 </div>
 {% endblock %}

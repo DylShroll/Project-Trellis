@@ -1,0 +1,27 @@
+<form
+  hx-post="/garden/{{ plot_id }}/stories/new"
+  hx-target="#story-form"
+  hx-swap="innerHTML"
+  class="space-y-3 mb-4"
+>
+  <textarea
+    name="content"
+    required
+    rows="3"
+    autofocus
+    placeholder="What's a memory, detail, or story about this person?"
+    class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+           focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent resize-none"
+  ></textarea>
+  <div class="flex gap-2">
+    <button
+      type="submit"
+      class="bg-deep-moss text-cream px-4 py-2 rounded-lg text-sm font-medium hover:bg-bark transition-colors"
+    >Save story</button>
+    <button
+      type="button"
+      onclick="document.getElementById('story-form').innerHTML = ''"
+      class="bg-sandstone text-loam px-4 py-2 rounded-lg text-sm hover:bg-light-sage transition-colors"
+    >Cancel</button>
+  </div>
+</form>

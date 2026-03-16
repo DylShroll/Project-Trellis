@@ -10,9 +10,9 @@
   <div class="bg-white rounded-card border border-light-sage p-8">
     <form
       {% if plot %}
-        hx-patch="/api/v1/garden/{{ plot.id }}"
+        hx-post="/garden/{{ plot.id }}/edit"
       {% else %}
-        hx-post="/api/v1/garden/"
+        hx-post="/garden/new"
       {% endif %}
       hx-target="#form-error"
       hx-swap="innerHTML"

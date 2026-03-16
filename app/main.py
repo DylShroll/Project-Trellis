@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
@@ -9,6 +8,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.garden.router import router as garden_router
 from app.modules.journal.router import router as journal_router
 from app.modules.notifications.router import router as notifications_router
+from app.modules.ui.router import router as ui_router
 
 settings = get_settings()
 
@@ -32,6 +32,7 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
 
+    app.include_router(ui_router)
     app.include_router(auth_router)
     app.include_router(garden_router)
     app.include_router(journal_router)

@@ -32,7 +32,7 @@ class Plot(Base):
     )
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     relationship_tag: Mapped[RelationshipTag] = mapped_column(
-        Enum(RelationshipTag, name="relationship_tag_enum"),
+        Enum(RelationshipTag, name="relationship_tag_enum", values_callable=lambda e: [m.value for m in e]),
         default=RelationshipTag.FRIEND,
         nullable=False,
     )

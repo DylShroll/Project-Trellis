@@ -1,0 +1,58 @@
+<form
+  hx-post="/garden/{{ plot_id }}/milestones/new"
+  hx-target="#milestone-form"
+  hx-swap="innerHTML"
+  class="space-y-3 mb-4"
+>
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <label class="block text-xs text-loam/60 mb-1">Title</label>
+      <input
+        name="title"
+        type="text"
+        required
+        maxlength="200"
+        autofocus
+        placeholder="e.g. Birthday, Work anniversary"
+        class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-2 text-sm text-loam
+               focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+      />
+    </div>
+    <div>
+      <label class="block text-xs text-loam/60 mb-1">Date</label>
+      <input
+        name="date"
+        type="date"
+        required
+        class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-2 text-sm text-loam
+               focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+      />
+    </div>
+  </div>
+  <div>
+    <label class="block text-xs text-loam/60 mb-1">Notes (optional)</label>
+    <input
+      name="notes"
+      type="text"
+      maxlength="500"
+      placeholder="Any extra context"
+      class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-2 text-sm text-loam
+             focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+    />
+  </div>
+  <label class="flex items-center gap-2 text-sm text-loam cursor-pointer">
+    <input name="is_recurring" type="checkbox" value="true" class="rounded border-light-sage text-sage-green" />
+    Repeats yearly
+  </label>
+  <div class="flex gap-2">
+    <button
+      type="submit"
+      class="bg-deep-moss text-cream px-4 py-2 rounded-lg text-sm font-medium hover:bg-bark transition-colors"
+    >Save milestone</button>
+    <button
+      type="button"
+      onclick="document.getElementById('milestone-form').innerHTML = ''"
+      class="bg-sandstone text-loam px-4 py-2 rounded-lg text-sm hover:bg-light-sage transition-colors"
+    >Cancel</button>
+  </div>
+</form>

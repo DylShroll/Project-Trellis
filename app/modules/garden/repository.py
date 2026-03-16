@@ -29,6 +29,7 @@ class PlotRepository:
     async def list_for_user(self, db: AsyncSession, user_id: UUID) -> list[Plot]:
         result = await db.execute(
             select(Plot)
+            .options(*self._with_relations())
             .where(Plot.user_id == user_id)
             .order_by(Plot.display_name.asc())
         )
