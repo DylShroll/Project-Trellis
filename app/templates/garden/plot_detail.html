@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{{ plot.display_name }} · Trellis{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <!-- Header -->
+  <div class="flex items-start gap-4 mb-8">
+    {% if plot.photo_url %}
+      <img src="{{ plot.photo_url }}" alt="{{ plot.display_name }}" class="w-20 h-20 rounded-full object-cover shadow-sm" />
+    {% else %}
+      <div class="w-20 h-20 rounded-full bg-light-sage flex items-center justify-center shadow-sm">
+        <span class="text-sage-green font-heading font-bold text-3xl">{{ plot.display_name[0] }}</span>
+      </div>
+    {% endif %}
+    <div class="flex-1">
+      <h1 class="font-heading font-bold text-2xl text-bark">{{ plot.display_name }}</h1>
+      <span class="inline-block mt-1 text-xs px-3 py-1 rounded-full bg-light-sage text-sage-green capitalize">
+        {{ plot.relationship_tag.replace('_', ' ') }}
+      </span>
+      {% if plot.last_connected %}
+        <p class="mt-2 text-xs text-loam/60">Last connected {{ plot.last_connected.strftime('%B %d, %Y') }}</p>
+      {% endif %}
+    </div>
+    <a href="/garden/{{ plot.id }}/edit" class="text-sm text-warm-clay hover:text-bark">Edit</a>
+  </div>
+
+  <!-- Stories -->
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-heading font-semibold text-lg text-bark">Stories</h2>
+      <button
+        hx-get="/garden/{{ plot.id }}/stories/new"
+        hx-target="#story-form"
+        hx-swap="innerHTML"
+        class="text-sm text-warm-clay hover:text-bark"
+      >+ Add</button>
+    </div>
+    <div id="story-form" class="mb-3"></div>
+    {% if plot.stories %}
+      <div class="space-y-3">
+        {% for story in plot.stories %}
+          <div class="bg-white rounded-card border border-light-sage p-4 text-sm text-loam leading-relaxed">
+            {{ story.content }}
+            <p class="mt-2 text-xs text-loam/40">{{ story.created_at.strftime('%b %d, %Y') }}</p>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-sm text-loam/50 italic">No stories yet. What's something memorable about {{ plot.display_name }}?</p>
+    {% endif %}
+  </section>
+
+  <!-- Details -->
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-heading font-semibold text-lg text-bark">Details</h2>
+      <button class="text-sm text-warm-clay hover:text-bark">+ Add</button>
+    </div>
+    {% if plot.details %}
+      <dl class="grid grid-cols-2 gap-3">
+        {% for detail in plot.details %}
+          <div class="bg-sandstone rounded-lg p-3">
+            <dt class="text-xs text-loam/50 uppercase tracking-wide">{{ detail.key }}</dt>
+            <dd class="mt-1 text-sm text-bark font-medium">{{ detail.value }}</dd>
+          </div>
+        {% endfor %}
+      </dl>
+    {% else %}
+      <p class="text-sm text-loam/50 italic">No details yet. Birthday? Favorite coffee order? Add what matters.</p>
+    {% endif %}
+  </section>
+
+  <!-- Curiosities -->
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-heading font-semibold text-lg text-bark">Curiosities</h2>
+      <button class="text-sm text-warm-clay hover:text-bark">+ Add</button>
+    </div>
+    {% if plot.curiosities %}
+      <ul class="space-y-2">
+        {% for curiosity in plot.curiosities %}
+          <li class="flex items-start gap-2 text-sm {% if curiosity.is_resolved %}text-loam/40 line-through{% else %}text-loam{% endif %}">
+            <span class="mt-0.5">{% if curiosity.is_resolved %}✓{% else %}○{% endif %}</span>
+            {{ curiosity.question }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-sm text-loam/50 italic font-accent text-base">What do you want to know about {{ plot.display_name }}?</p>
+    {% endif %}
+  </section>
+
+  <!-- Milestones -->
+  <section>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-heading font-semibold text-lg text-bark">Milestones</h2>
+      <button class="text-sm text-warm-clay hover:text-bark">+ Add</button>
+    </div>
+    {% if plot.milestones %}
+      <ul class="space-y-2">
+        {% for milestone in plot.milestones %}
+          <li class="flex items-center gap-3 text-sm">
+            <span class="text-golden-hour">{% if milestone.is_recurring %}🔁{% else %}📅{% endif %}</span>
+            <span class="text-bark font-medium">{{ milestone.title }}</span>
+            <span class="text-loam/50">{{ milestone.date.strftime('%b %d') }}{% if milestone.is_recurring %} (yearly){% endif %}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-sm text-loam/50 italic">No milestones yet. Birthdays, anniversaries, important dates.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Sign In · Trellis{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <span class="text-5xl">🌿</span>
+      <h1 class="mt-4 font-heading font-bold text-3xl text-bark">Welcome back</h1>
+      <p class="mt-2 text-sm text-loam/70">Sign in to tend your garden</p>
+    </div>
+
+    <div class="bg-white rounded-card shadow-sm border border-light-sage p-8">
+      <form
+        hx-post="/auth/login"
+        hx-target="#form-error"
+        hx-swap="innerHTML"
+        class="space-y-5"
+      >
+        <div id="form-error" class="text-warm-clay text-sm"></div>
+
+        <div>
+          <label for="email" class="block text-sm font-medium text-bark mb-1">Email</label>
+          <input
+            id="email" name="email" type="email" required autocomplete="email"
+            class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+                   focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+            placeholder="you@example.com"
+          />
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-bark mb-1">Password</label>
+          <input
+            id="password" name="password" type="password" required autocomplete="current-password"
+            class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+                   focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+            placeholder="••••••••"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="w-full bg-deep-moss text-cream font-medium py-2.5 rounded-lg hover:bg-bark transition-colors text-sm"
+        >
+          Sign In
+        </button>
+      </form>
+    </div>
+
+    <p class="mt-6 text-center text-sm text-loam/60">
+      Don't have an account?
+      <a href="/auth/register" class="text-warm-clay hover:underline">Create one</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

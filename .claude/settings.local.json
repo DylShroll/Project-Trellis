@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \":*)",
+      "Bash(py --version)",
+      "Bash(python -c \":*)",
+      "Bash(\"/c/Program Files \\(x86\\)/Python313-32/python\" --version)",
+      "Bash(cmd.exe /c \"python --version\")",
+      "Bash(cmd.exe /c \"py -3 --version 2>&1\")",
+      "Read(//c/Program Files \\(x86\\)/Python313-32//**)",
+      "Read(//c/Users/dylan/AppData/Local/Programs//**)",
+      "Read(//c/Users/dylan/AppData/Local//**)",
+      "Bash(\"/c/Program Files \\(x86\\)/Python313-32/python.exe\" -c \"print\\(''hello''\\)\")",
+      "Bash(powershell.exe -Command \"python --version\")",
+      "Bash(powershell.exe -Command \"& ''C:\\\\Program Files \\(x86\\)\\\\Python313-32\\\\python.exe'' --version\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npm --version)",
+      "Bash(powershell.exe -Command \"node --version; npm --version\")",
+      "Bash(powershell.exe -Command \"Get-Command python*, py.exe -ErrorAction SilentlyContinue | Select-Object Name, Source\")",
+      "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" --version)",
+      "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" -c \"import docx; print\\(''ok''\\)\")",
+      "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" -m pip install python-docx)",
+      "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" -m pip install python-docx --break-system-packages)",
+      "Bash(\"/c/Users/dylan/.local/bin/python3.14.exe\" -c \":*)"
+    ]
+  }
+}

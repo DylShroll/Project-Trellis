@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Your Garden · Trellis{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="font-heading font-bold text-2xl text-bark">Your Garden</h1>
+      <p class="text-sm text-loam/60 mt-1">{{ plots|length }} {% if plots|length == 1 %}person{% else %}people{% endif %} in your life</p>
+    </div>
+    <a
+      href="/garden/new"
+      class="bg-warm-clay text-cream px-4 py-2 rounded-lg text-sm font-medium hover:bg-bark transition-colors"
+    >
+      + Add Person
+    </a>
+  </div>
+
+  {% if plots %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for plot in plots %}
+        {% include "partials/plot_card.html" %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <!-- Empty state -->
+    <div class="text-center py-20">
+      <div class="text-6xl mb-4">🌱</div>
+      <h2 class="font-heading font-semibold text-xl text-bark">Your garden is empty</h2>
+      <p class="mt-2 text-sm text-loam/60 max-w-xs mx-auto">
+        Add the first person whose story you want to remember and nurture.
+      </p>
+      <a
+        href="/garden/new"
+        class="inline-block mt-6 bg-deep-moss text-cream px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-bark transition-colors"
+      >
+        Add your first person
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+<div class="bg-white rounded-card shadow-sm hover:shadow-md transition-shadow p-5 border border-light-sage">
+  <div class="flex items-start gap-3">
+    {% if plot.photo_url %}
+      <img src="{{ plot.photo_url }}" alt="{{ plot.display_name }}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+    {% else %}
+      <div class="w-12 h-12 rounded-full bg-light-sage flex items-center justify-center flex-shrink-0">
+        <span class="text-sage-green font-heading font-bold text-lg">{{ plot.display_name[0] }}</span>
+      </div>
+    {% endif %}
+
+    <div class="flex-1 min-w-0">
+      <h3 class="font-heading font-semibold text-bark text-base truncate">{{ plot.display_name }}</h3>
+      <span class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-light-sage text-sage-green capitalize">
+        {{ plot.relationship_tag.replace('_', ' ') }}
+      </span>
+
+      {% if plot.last_connected %}
+        <p class="mt-2 text-xs text-loam/60">
+          Last connected {{ plot.last_connected.strftime('%b %d, %Y') }}
+        </p>
+      {% endif %}
+    </div>
+
+    <a href="/garden/{{ plot.id }}" class="text-warm-clay hover:text-bark transition-colors text-sm font-medium flex-shrink-0">
+      View →
+    </a>
+  </div>
+</div>

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{% if plot %}Edit {{ plot.display_name }}{% else %}Add Person{% endif %} · Trellis{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-8">
+  <h1 class="font-heading font-bold text-2xl text-bark mb-6">
+    {% if plot %}Edit {{ plot.display_name }}{% else %}Add someone to your garden{% endif %}
+  </h1>
+
+  <div class="bg-white rounded-card border border-light-sage p-8">
+    <form
+      {% if plot %}
+        hx-patch="/api/v1/garden/{{ plot.id }}"
+      {% else %}
+        hx-post="/api/v1/garden/"
+      {% endif %}
+      hx-target="#form-error"
+      hx-swap="innerHTML"
+      class="space-y-5"
+    >
+      <div id="form-error" class="text-warm-clay text-sm"></div>
+
+      <div>
+        <label class="block text-sm font-medium text-bark mb-1">Name</label>
+        <input
+          name="display_name" type="text" required maxlength="100"
+          value="{% if plot %}{{ plot.display_name }}{% endif %}"
+          class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+                 focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+          placeholder="How do you think of them?"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-bark mb-1">Relationship</label>
+        <select
+          name="relationship_tag"
+          class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+                 focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
+        >
+          {% set tags = ['partner', 'family', 'close_friend', 'friend', 'colleague', 'mentor', 'community', 'custom'] %}
+          {% for tag in tags %}
+            <option value="{{ tag }}" {% if plot and plot.relationship_tag.value == tag %}selected{% endif %}>
+              {{ tag.replace('_', ' ').title() }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button
+          type="submit"
+          class="flex-1 bg-deep-moss text-cream font-medium py-2.5 rounded-lg hover:bg-bark transition-colors text-sm"
+        >
+          {% if plot %}Save Changes{% else %}Add to Garden{% endif %}
+        </button>
+        <a
+          href="{% if plot %}/garden/{{ plot.id }}{% else %}/garden{% endif %}"
+          class="flex-1 text-center bg-sandstone text-loam font-medium py-2.5 rounded-lg hover:bg-light-sage transition-colors text-sm"
+        >
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

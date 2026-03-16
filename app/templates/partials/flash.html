@@ -1,0 +1,16 @@
+{% if request is defined and request.session is defined %}
+  {% with messages = get_flashed_messages(with_categories=True) %}
+    {% if messages %}
+      <div id="flash-messages" class="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm">
+        {% for category, message in messages %}
+          <div class="rounded-card px-4 py-3 shadow-lg text-sm font-medium
+            {% if category == 'error' %}bg-warm-clay text-cream
+            {% elif category == 'success' %}bg-sage-green text-cream
+            {% else %}bg-bark text-cream{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+{% endif %}
