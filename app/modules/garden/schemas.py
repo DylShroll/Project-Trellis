@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date as Date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -58,14 +58,14 @@ class CuriosityRead(BaseModel):
 
 class MilestoneCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
-    date: date
+    date: Date
     notes: str | None = None
     is_recurring: bool = False
 
 
 class MilestoneUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=200)
-    date: date | None = None
+    date: Date | None = None
     notes: str | None = None
     is_recurring: bool | None = None
 
@@ -76,7 +76,7 @@ class MilestoneRead(BaseModel):
     id: UUID
     plot_id: UUID
     title: str
-    date: date
+    date: Date
     notes: str | None
     is_recurring: bool
     created_at: datetime
