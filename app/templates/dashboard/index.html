@@ -5,28 +5,32 @@
 <div class="max-w-3xl mx-auto px-4 py-8">
   <div class="mb-8">
     <p class="font-accent text-xl text-sage-green">Good morning{% if user %}, {{ user.display_name }}{% endif %}</p>
-    <h1 class="font-heading font-bold text-3xl text-bark mt-1">Your garden awaits.</h1>
+    <h1 class="font-display text-3xl font-semibold text-bark mt-1">Your garden awaits.</h1>
   </div>
 
   <div class="grid gap-5">
-    <!-- Daily Curiosity -->
-    <div class="bg-deep-moss text-cream rounded-card p-6">
-      <p class="text-xs uppercase tracking-widest text-light-sage/60 mb-2">Today's curiosity</p>
+    <!-- Daily Curiosity — rich plum hero card -->
+    <div class="bg-deep-moss text-cream rounded-card p-6 relative overflow-hidden">
+      <!-- Ornamental gold top rule -->
+      <div class="absolute top-0 left-0 right-0 h-0.5" style="background: linear-gradient(to right, transparent, rgba(196,154,120,0.6), transparent);"></div>
+      <p class="text-xs uppercase tracking-widest text-gilt/70 mb-3">Today's curiosity</p>
       {% if daily_prompt %}
         <p class="font-accent text-xl leading-relaxed">{{ daily_prompt.prompts[0] }}</p>
-        <p class="mt-3 text-xs text-light-sage/50">About {{ daily_prompt.plot_name }} · refreshes daily</p>
+        <p class="mt-3 text-xs text-cream/40 font-display italic">About {{ daily_prompt.plot_name }} · refreshes daily</p>
       {% else %}
-        <p class="font-accent text-xl text-light-sage/70">
+        <p class="font-accent text-xl text-cream/60">
           Add someone to your garden to receive your first prompt.
         </p>
       {% endif %}
+      <!-- Ornamental gold bottom rule -->
+      <div class="absolute bottom-0 left-0 right-0 h-0.5" style="background: linear-gradient(to right, transparent, rgba(196,154,120,0.3), transparent);"></div>
     </div>
 
     <!-- Recent Garden -->
-    <div class="bg-white rounded-card border border-light-sage p-6">
+    <div class="bg-white rounded-card border border-light-sage p-6 nouveau-card">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-heading font-semibold text-bark">Your Garden</h2>
-        <a href="/garden" class="text-sm text-warm-clay hover:underline">View all</a>
+        <a href="/garden" class="text-sm text-warm-clay hover:text-bark transition-colors">View all →</a>
       </div>
       {% if recent_plots %}
         <div class="space-y-3">
@@ -37,23 +41,23 @@
       {% else %}
         <div class="text-center py-6">
           <p class="text-sm text-loam/60">Your garden is empty.</p>
-          <a href="/garden/new" class="inline-block mt-3 text-sm text-warm-clay hover:underline">Add your first person →</a>
+          <a href="/garden/new" class="inline-block mt-3 text-sm text-warm-clay hover:text-bark transition-colors">Add your first person →</a>
         </div>
       {% endif %}
     </div>
 
     <!-- Recent Journal -->
-    <div class="bg-white rounded-card border border-light-sage p-6">
+    <div class="bg-white rounded-card border border-light-sage p-6 nouveau-card">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-heading font-semibold text-bark">Recent Journal</h2>
-        <a href="/journal" class="text-sm text-warm-clay hover:underline">View all</a>
+        <a href="/journal" class="text-sm text-warm-clay hover:text-bark transition-colors">View all →</a>
       </div>
       {% if recent_entries %}
         <div class="space-y-3">
           {% for entry in recent_entries %}
-            <div class="text-sm text-loam border-l-2 border-light-sage pl-4 py-1">
+            <div class="text-sm text-loam border-l-2 border-gilt/30 pl-4 py-1">
               <p class="line-clamp-2">{{ entry.content }}</p>
-              <p class="mt-1 text-xs text-loam/40">{{ entry.created_at.strftime('%b %d, %Y') }}</p>
+              <p class="mt-1 text-xs text-loam/40 font-display italic">{{ entry.created_at.strftime('%b %d, %Y') }}</p>
             </div>
           {% endfor %}
         </div>

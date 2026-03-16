@@ -4,13 +4,39 @@
 {% block content %}
 <div class="min-h-screen flex items-center justify-center px-4 py-12">
   <div class="w-full max-w-md">
+
     <div class="text-center mb-8">
-      <span class="text-5xl">🌿</span>
-      <h1 class="mt-4 font-heading font-bold text-3xl text-bark">Welcome back</h1>
-      <p class="mt-2 text-sm text-loam/70">Sign in to tend your garden</p>
+      <!-- Art Nouveau botanical garland -->
+      <svg class="mx-auto mb-5" viewBox="0 0 220 40" width="220" height="40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- Central blossom -->
+        <ellipse cx="110" cy="20" rx="5.5" ry="10" fill="#8B6A96" opacity="0.5"/>
+        <ellipse cx="110" cy="20" rx="10" ry="5.5" fill="#8B6A96" opacity="0.5"/>
+        <circle cx="110" cy="20" r="3.5" fill="#C49A78" opacity="0.75"/>
+        <!-- Left branch -->
+        <path d="M104,20 C92,17 77,9 60,17" stroke="#3B1F4A" stroke-width="0.9" opacity="0.38"/>
+        <ellipse cx="82" cy="12" rx="5.5" ry="2.5" fill="#3B1F4A" opacity="0.2" transform="rotate(-18,82,12)"/>
+        <!-- Left secondary bloom -->
+        <circle cx="60" cy="17" r="6.5" fill="none" stroke="#C49A78" stroke-width="0.9" opacity="0.5"/>
+        <circle cx="60" cy="17" r="2.5" fill="#C49A78" opacity="0.55"/>
+        <!-- Left rule -->
+        <path d="M53,17 L10,17" stroke="#3B1F4A" stroke-width="0.4" opacity="0.25"/>
+        <circle cx="10" cy="17" r="1.8" fill="#C49A78" opacity="0.4"/>
+        <!-- Right branch -->
+        <path d="M116,20 C128,17 143,9 160,17" stroke="#3B1F4A" stroke-width="0.9" opacity="0.38"/>
+        <ellipse cx="138" cy="12" rx="5.5" ry="2.5" fill="#3B1F4A" opacity="0.2" transform="rotate(18,138,12)"/>
+        <!-- Right secondary bloom -->
+        <circle cx="160" cy="17" r="6.5" fill="none" stroke="#C49A78" stroke-width="0.9" opacity="0.5"/>
+        <circle cx="160" cy="17" r="2.5" fill="#C49A78" opacity="0.55"/>
+        <!-- Right rule -->
+        <path d="M167,17 L210,17" stroke="#3B1F4A" stroke-width="0.4" opacity="0.25"/>
+        <circle cx="210" cy="17" r="1.8" fill="#C49A78" opacity="0.4"/>
+      </svg>
+
+      <h1 class="font-display text-4xl font-semibold text-bark">Welcome back</h1>
+      <p class="mt-2 text-sm text-loam/60 font-body">Sign in to tend your garden</p>
     </div>
 
-    <div class="bg-white rounded-card shadow-sm border border-light-sage p-8">
+    <div class="bg-white rounded-card shadow-sm border border-light-sage p-8 nouveau-auth-card">
       <form
         hx-post="/auth/login/web"
         hx-target="#form-error"
@@ -41,7 +67,7 @@
 
         <button
           type="submit"
-          class="w-full bg-deep-moss text-cream font-medium py-2.5 rounded-lg hover:bg-bark transition-colors text-sm"
+          class="w-full bg-deep-moss text-cream font-medium py-2.5 rounded-lg hover:bg-bark transition-colors text-sm tracking-wide"
         >
           Sign In
         </button>
@@ -50,7 +76,7 @@
 
     <p class="mt-6 text-center text-sm text-loam/60">
       Don't have an account?
-      <a href="/auth/register" class="text-warm-clay hover:underline">Create one</a>
+      <a href="/auth/register" class="text-warm-clay hover:text-bark transition-colors hover:underline">Create one</a>
     </p>
   </div>
 </div>

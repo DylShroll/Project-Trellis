@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Trellis{% endblock %}</title>
 
-  <!-- Fonts -->
+  <!-- Fonts: Fraunces (headings) · Cormorant Garamond (display) · Inter (body) · Caveat (accent) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500&family=Caveat:wght@400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500&family=Caveat:wght@400&display=swap" rel="stylesheet" />
 
-  <!-- Tailwind via CDN (Phase 1; replaced with build in Phase 3) -->
+  <!-- Tailwind via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -18,28 +18,92 @@
       theme: {
         extend: {
           colors: {
-            'deep-moss':   '#2D3A2E',
-            'warm-clay':   '#B5694D',
-            'sage-green':  '#7A8B6F',
-            'cream':       '#F5F0E8',
-            'bark':        '#5C4A3A',
-            'loam':        '#3E3229',
-            'light-sage':  '#D4DDD0',
-            'sandstone':   '#E8DFD0',
-            'golden-hour': '#C9973E',
+            /* ── Plum & Rose Gold palette ─────────────────────── */
+            'deep-moss':   '#3B1F4A',   // deep royal plum  (nav, hero, dark buttons)
+            'warm-clay':   '#AB6B55',   // warm rose-terracotta  (CTAs, links, actions)
+            'sage-green':  '#8B6A96',   // dusty plum  (secondary accent, badges)
+            'cream':       '#F7EDE6',   // warm parchment  (page background)
+            'bark':        '#2C1A35',   // darkest plum  (headings, strong text)
+            'loam':        '#4A3050',   // dark plum  (body text)
+            'light-sage':  '#DFC8D8',   // blush / rose mist  (borders, tag bg, skeletons)
+            'sandstone':   '#EDE0DC',   // warm vellum  (input bg, subtle fills)
+            'golden-hour': '#C09448',   // antique gold  (milestone icons, highlights)
+            /* ── Ornamental extras ───────────────────────────── */
+            'gilt':        '#C49A78',   // soft rose gold  (SVG ornaments, decorative accents)
+            'plum-mid':    '#7A5C85',   // medium plum  (active states, hover)
           },
           fontFamily: {
             heading: ['Fraunces', 'Georgia', 'serif'],
+            display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
             body:    ['Inter', 'system-ui', 'sans-serif'],
             accent:  ['Caveat', 'cursive'],
           },
           borderRadius: {
-            card: '12px',
+            card: '14px',
           },
         }
       }
     }
   </script>
+
+  <!-- Art Nouveau design system -->
+  <style>
+    /* ── Botanical vine texture — 80 px repeating lattice ─── */
+    body {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M40,0 C38,12 42,22 40,33 C38,37 40,40 40,40' stroke='%233B1F4A' stroke-width='0.6' fill='none' opacity='0.07'/%3E%3Cpath d='M40,40 C40,43 38,52 40,62 C42,72 38,77 40,80' stroke='%233B1F4A' stroke-width='0.6' fill='none' opacity='0.07'/%3E%3Cpath d='M0,40 C12,38 22,42 33,40 C37,38 40,40 40,40' stroke='%233B1F4A' stroke-width='0.6' fill='none' opacity='0.07'/%3E%3Cpath d='M40,40 C43,40 52,42 62,40 C72,38 77,42 80,40' stroke='%233B1F4A' stroke-width='0.6' fill='none' opacity='0.07'/%3E%3Cellipse cx='40' cy='40' rx='3.5' ry='3.5' fill='%233B1F4A' opacity='0.045'/%3E%3Cellipse cx='40' cy='20' rx='2.2' ry='3.8' fill='%233B1F4A' opacity='0.04' transform='rotate(12,40,20)'/%3E%3Cellipse cx='40' cy='62' rx='2.2' ry='3.8' fill='%233B1F4A' opacity='0.04' transform='rotate(-12,40,62)'/%3E%3Cellipse cx='20' cy='40' rx='3.8' ry='2.2' fill='%233B1F4A' opacity='0.04' transform='rotate(12,20,40)'/%3E%3Cellipse cx='62' cy='40' rx='3.8' ry='2.2' fill='%233B1F4A' opacity='0.04' transform='rotate(-12,62,40)'/%3E%3Ccircle cx='0' cy='0' r='1.5' fill='%23C49A78' opacity='0.13'/%3E%3Ccircle cx='80' cy='0' r='1.5' fill='%23C49A78' opacity='0.13'/%3E%3Ccircle cx='0' cy='80' r='1.5' fill='%23C49A78' opacity='0.13'/%3E%3Ccircle cx='80' cy='80' r='1.5' fill='%23C49A78' opacity='0.13'/%3E%3C/svg%3E");
+      background-size: 80px 80px;
+    }
+
+    /* ── Nav bar ─────────────────────────────────────────── */
+    .trellis-nav {
+      box-shadow: 0 2px 14px rgba(59,31,74,0.22);
+      border-bottom: 1px solid rgba(196,154,120,0.28);
+    }
+
+    /* ── Art Nouveau card elevation ──────────────────────── */
+    .nouveau-card {
+      box-shadow:
+        0 0 0 1px rgba(196,154,120,0.12),
+        0 2px 8px rgba(59,31,74,0.08);
+    }
+
+    /* ── Auth form card — inner ornamental rule ───────────── */
+    .nouveau-auth-card {
+      position: relative;
+    }
+    .nouveau-auth-card::before {
+      content: '';
+      position: absolute;
+      inset: 7px;
+      border: 1px solid rgba(196,154,120,0.2);
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .nouveau-auth-card > * { position: relative; z-index: 1; }
+
+    /* ── Ornamental botanical divider ─────────────────────── */
+    /* Usage: <div class="nouveau-divider"><span>Section</span></div>  */
+    .nouveau-divider {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      color: rgba(74,48,80,0.45);
+    }
+    .nouveau-divider::before,
+    .nouveau-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(196,154,120,0.5), transparent);
+    }
+
+    /* ── Scrollbar (Webkit) ───────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #F7EDE6; }
+    ::-webkit-scrollbar-thumb { background: rgba(139,106,150,0.35); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(139,106,150,0.55); }
+  </style>
 
   <!-- HTMX -->
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
