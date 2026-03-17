@@ -58,6 +58,15 @@ class ContextAssembler:
 
         recent_journal = [e.content[:300] for e in journal_entries]
 
+        interest_groups = [
+            {
+                "label": g.custom_label or g.group_type,
+                "fields": list(g.fields or []),
+            }
+            for g in plot.interest_groups
+            if g.fields
+        ]
+
         return PlotContext(
             display_name=plot.display_name,
             relationship_tag=plot.relationship_tag.replace("_", " "),
@@ -68,6 +77,7 @@ class ContextAssembler:
             curiosities=curiosities,
             milestones=milestones,
             recent_journal=recent_journal,
+            interest_groups=interest_groups,
         )
 
     async def for_daily(

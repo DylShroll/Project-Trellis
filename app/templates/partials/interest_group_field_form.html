@@ -1,0 +1,36 @@
+<div id="ig-field-form-{{ group_id }}" class="mt-2 bg-white rounded-lg border border-light-sage p-3">
+  <form
+    hx-post="/garden/{{ plot_id }}/interest-groups/{{ group_id }}/fields/new"
+    hx-target="#ig-field-form-{{ group_id }}"
+    hx-swap="outerHTML"
+    class="flex gap-2 items-end"
+  >
+    <div class="flex-1">
+      <label class="block text-xs text-loam/50 mb-1">Label</label>
+      <input
+        name="key" type="text" required maxlength="100"
+        placeholder="e.g. Favourite artists"
+        class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-1.5 text-sm text-loam
+               focus:outline-none focus:ring-1 focus:ring-sage-green focus:border-transparent"
+      />
+    </div>
+    <div class="flex-1">
+      <label class="block text-xs text-loam/50 mb-1">Value</label>
+      <input
+        name="value" type="text" required maxlength="500"
+        placeholder="e.g. Radiohead, Joni Mitchell"
+        class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-1.5 text-sm text-loam
+               focus:outline-none focus:ring-1 focus:ring-sage-green focus:border-transparent"
+      />
+    </div>
+    <button
+      type="submit"
+      class="flex-shrink-0 text-sm bg-deep-moss text-cream px-3 py-1.5 rounded-lg hover:bg-bark transition-colors"
+    >Add</button>
+    <button
+      type="button"
+      onclick="document.getElementById('ig-field-form-{{ group_id }}').remove()"
+      class="flex-shrink-0 text-sm text-loam/40 hover:text-bark transition-colors"
+    >✕</button>
+  </form>
+</div>

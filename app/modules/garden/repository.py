@@ -2,13 +2,15 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import attributes, selectinload
 
-from app.modules.garden.models import Curiosity, Detail, Milestone, Plot, Story
+from app.modules.garden.models import Curiosity, Detail, InterestGroup, Milestone, Plot, Story
 from app.modules.garden.schemas import (
     CuriosityCreate,
     DetailCreate,
     DetailUpdate,
+    InterestGroupAddField,
+    InterestGroupCreate,
     MilestoneCreate,
     MilestoneUpdate,
     PlotCreate,
@@ -24,6 +26,7 @@ class PlotRepository:
             selectinload(Plot.details),
             selectinload(Plot.curiosities),
             selectinload(Plot.milestones),
+            selectinload(Plot.interest_groups),
         )
 
     async def list_for_user(self, db: AsyncSession, user_id: UUID) -> list[Plot]:
@@ -164,4 +167,57 @@ class MilestoneRepository:
 
     async def delete(self, db: AsyncSession, milestone: Milestone) -> None:
         await db.delete(milestone)
+        await db.commit()
+
+
+class InterestGroupRepository:
+    async def create(
+        self, db: AsyncSession, plot_id: UUID, data: InterestGroupCreate
+    ) -> InterestGroup:
+        group = InterestGroup(
+            plot_id=plot_id,
+            group_type=data.group_type,
+            custom_label=data.custom_label,
+            fields=[],
+        )
+        db.add(group)
+        await db.commit()
+        await db.refresh(group)
+        return group
+
+    async def get_by_id_for_plot(
+        self, db: AsyncSession, group_id: UUID, plot_id: UUID
+    ) -> InterestGroup | None:
+        result = await db.execute(
+            select(InterestGroup).where(
+                InterestGroup.id == group_id, InterestGroup.plot_id == plot_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def add_field(
+        self, db: AsyncSession, group: InterestGroup, field: InterestGroupAddField
+    ) -> InterestGroup:
+        current = list(group.fields or [])
+        current.append({"key": field.key, "value": field.value})
+        group.fields = current
+        attributes.flag_modified(group, "fields")
+        await db.commit()
+        await db.refresh(group)
+        return group
+
+    async def remove_field(
+        self, db: AsyncSession, group: InterestGroup, field_index: int
+    ) -> InterestGroup:
+        current = list(group.fields or [])
+        if 0 <= field_index < len(current):
+            current.pop(field_index)
+            group.fields = current
+            attributes.flag_modified(group, "fields")
+            await db.commit()
+            await db.refresh(group)
+        return group
+
+    async def delete(self, db: AsyncSession, group: InterestGroup) -> None:
+        await db.delete(group)
         await db.commit()

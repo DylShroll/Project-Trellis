@@ -29,7 +29,15 @@
       "Bash(curl -s -X POST http://localhost:8000/auth/register -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test@trellis.app\"\",\"\"password\"\":\"\"Password123\"\",\"\"display_name\"\":\"\"Test User\"\"}')",
       "Bash(grep -r \"def \" /Users/dylanshroll/Desktop/Project-Trellis/app/modules/*/repository.py)",
       "Bash(find /Users/dylanshroll/Desktop/Project-Trellis -type f -maxdepth 2 \\\\\\(-name requirements.txt -o -name *.md -o -name Dockerfile \\\\\\))",
-      "Bash(find /Users/dylanshroll/Desktop/Project-Trellis -not -path */.* -not -path */__pycache__/* -not -path *.egg-info* -not -path */.venv/* -type f)"
+      "Bash(find /Users/dylanshroll/Desktop/Project-Trellis -not -path */.* -not -path */__pycache__/* -not -path *.egg-info* -not -path */.venv/* -type f)",
+      "Bash(find /Users/dylanshroll/Desktop/Project-Trellis -type d -not -path */.*)",
+      "Bash(grep -r \"phase.*3\\\\|Phase.*3\\\\|interest_group\\\\|connection.*timeline\\\\|photo.*upload\" /Users/dylanshroll/Desktop/Project-Trellis/app --include=*.py -i)",
+      "Bash(curl -s \"http://localhost:8000/api/docs\" -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s \"http://localhost:8000/api/v1/auth\" -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s \"http://localhost:8000/api/v1/auth/login\" -X POST -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"test@example.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"test123\"\"\"\"}' -i)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxYTJhMzg4NC0xNjE0LTRjYjEtODFiNS02ZmVjNmUzYzExNDEiLCJleHAiOjE3NzM3MTcyMTAsImlhdCI6MTc3MzcxNjMxMH0.AeFrYEobZGt754jMXlJI3rtX1XrShqXooWlqXe7j3qU\" PLOT_ID=\"02615114-4aaf-40a4-b0ac-891f761084c7\" __NEW_LINE_e96d7b18cbd0bc3e__ echo \"=== GARDEN DETAIL PAGE ===\" curl -s \"http://localhost:8000/garden/$PLOT_ID\" -H \"Cookie: access_token=$TOKEN\" -i)",
+      "Read(//Users/dylanshroll/Desktop/Project-Trellis/**)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxYTJhMzg4NC0xNjE0LTRjYjEtODFiNS02ZmVjNmUzYzExNDEiLCJleHAiOjE3NzM3MTcyMTAsImlhdCI6MTc3MzcxNjMxMH0.AeFrYEobZGt754jMXlJI3rtX1XrShqXooWlqXe7j3qU\" curl -s \"http://localhost:8000/garden/02615114-4aaf-40a4-b0ac-891f761084c7\" -H \"Cookie: access_token=$TOKEN\" -i)"
     ]
   }
 }

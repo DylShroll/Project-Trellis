@@ -28,6 +28,11 @@ RULES:
 - If a milestone is approaching: weave it naturally into a deeper question, don't just mention the date.
 - If the user hasn't connected recently: at least one prompt should be a low-pressure, specific opening.
 - If the profile is sparse: generate prompts that open doors, not deepen existing knowledge.
+- If interest groups are present: use the specific interests to generate a prompt that goes deeper — not
+  "have you asked about their music?" but "You know they love Radiohead. Have you asked what drew them in first?"
+- If reflection_mode is true: the user just logged a conversation. Generate prompts for the user to
+  reflect on privately — questions to sit with, not to ask the other person. e.g., "What surprised you
+  most about what they shared?" or "What did you learn about them that you hadn't expected?"
 """
 
 
@@ -61,18 +66,33 @@ def _build_user_message(context: PlotContext) -> str:
     if context.recent_journal:
         lines.append(f"- Recent journal: {'; '.join(f'\"{j}\"' for j in context.recent_journal)}")
 
-    lines.append("")
-    lines.append("Generate 3 conversation prompts.")
+    if context.interest_groups:
+        lines.append("")
+        lines.append("Shared interests:")
+        for group in context.interest_groups:
+            field_strs = [f"{f['key']}: {f['value']}" for f in group["fields"][:5]]
+            lines.append(f"- {group['label']}: {', '.join(field_strs)}")
+
+    if context.reflection_mode:
+        lines.append("")
+        lines.append("Note: The user just finished a conversation with this person. Generate 3 reflection prompts for the user to sit with privately.")
+    else:
+        lines.append("")
+        lines.append("Generate 3 conversation prompts.")
     return "\n".join(lines)
 
 
 def _classify(context: PlotContext) -> str:
+    if context.reflection_mode:
+        return "reflection"
     if context.days_since_contact is not None and context.days_since_contact > 14:
         return "reconnection"
     for m in context.milestones:
         days = m.get("days_until")
         if days is not None and 0 <= days <= 7:
             return "milestone"
+    if context.interest_groups:
+        return "interest_thread"
     if not context.stories and not context.details:
         return "curiosity_seed"
     return "deepening"

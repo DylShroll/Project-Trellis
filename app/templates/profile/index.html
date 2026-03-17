@@ -42,8 +42,20 @@
           <input id="avatar-input" type="file" name="avatar"
                  accept="image/jpeg,image/png,image/webp"
                  class="hidden"
-                 onchange="document.getElementById('avatar-form').submit()" />
+                 onchange="trellisPreviewAvatar()" />
         </form>
+        <div id="avatar-preview-actions" class="hidden mt-2 flex gap-2">
+          <button type="button"
+                  onclick="document.getElementById('avatar-form').submit()"
+                  class="text-sm bg-deep-moss text-cream px-4 py-1.5 rounded-lg hover:bg-bark transition-colors">
+            Save photo
+          </button>
+          <button type="button"
+                  onclick="trellisResetAvatar()"
+                  class="text-sm text-loam/50 hover:text-bark transition-colors">
+            Cancel
+          </button>
+        </div>
 
         {% if request.query_params.get('avatar_error') %}
           {% set ae = request.query_params.get('avatar_error') %}
@@ -113,4 +125,34 @@
     </a>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function trellisPreviewAvatar() {
+  var input = document.getElementById('avatar-input');
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var container = document.querySelector('.group\\/avt');
+    var img = container.querySelector('img');
+    var placeholder = container.querySelector('div.rounded-full');
+    if (img) { img.src = e.target.result; }
+    else if (placeholder) {
+      var newImg = document.createElement('img');
+      newImg.src = e.target.result;
+      newImg.className = 'w-20 h-20 rounded-full object-cover shadow-sm';
+      placeholder.replaceWith(newImg);
+    }
+    document.getElementById('avatar-preview-actions').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+function trellisResetAvatar() {
+  document.getElementById('avatar-form').reset();
+  document.getElementById('avatar-preview-actions').classList.add('hidden');
+}
+</script>
 {% endblock %}

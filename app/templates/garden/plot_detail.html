@@ -34,8 +34,17 @@
                type="file"
                name="photo"
                accept="image/jpeg,image/png,image/webp"
-               onchange="document.getElementById('photo-form-{{ plot.id }}').submit()" />
+               onchange="trellisPreviewPhoto('{{ plot.id }}')" />
       </form>
+      <!-- Preview confirm row -->
+      <div id="photo-preview-row-{{ plot.id }}" class="hidden absolute -bottom-8 left-0 right-0 flex justify-center gap-2">
+        <button type="button"
+                onclick="document.getElementById('photo-form-{{ plot.id }}').submit()"
+                class="text-xs bg-deep-moss text-cream px-2 py-1 rounded-md">Save</button>
+        <button type="button"
+                onclick="trellisResetPhoto('{{ plot.id }}')"
+                class="text-xs bg-sandstone text-loam px-2 py-1 rounded-md">Cancel</button>
+      </div>
     </div>
 
     <div class="flex-1 min-w-0">
@@ -95,7 +104,7 @@
     {% if plot.stories %}
       <div class="space-y-3">
         {% for story in plot.stories %}
-          <div id="story-{{ story.id }}" class="bg-white rounded-card border border-light-sage p-4 group">
+          <div id="story-{{ story.id }}" class="bg-white rounded-card border border-light-sage nouveau-card p-4 group">
             <p class="text-sm text-loam leading-relaxed">{{ story.content }}</p>
             <div class="mt-2 flex items-center justify-between">
               <p class="text-xs text-loam/40">{{ story.created_at.strftime('%b %d, %Y') }}</p>
@@ -111,9 +120,11 @@
         {% endfor %}
       </div>
     {% else %}
-      <p class="text-sm text-loam/50 italic">No stories yet. What's something memorable about {{ plot.display_name }}?</p>
+      <p class="font-display italic text-base text-loam/50">No stories yet. What's something memorable about {{ plot.display_name }}?</p>
     {% endif %}
   </section>
+
+  <div class="nouveau-divider my-2"><span class="text-xs text-loam/30 uppercase tracking-widest">✦</span></div>
 
   <!-- Details (grouped by interest category) -->
   <section class="mb-8">
@@ -193,9 +204,11 @@
         {% endif %}
       {% endfor %}
     {% else %}
-      <p class="text-sm text-loam/50 italic">No details yet. Birthday? Favourite coffee order? Add what matters.</p>
+      <p class="font-display italic text-base text-loam/50">No details yet. Birthday? Favourite coffee order? Add what matters.</p>
     {% endif %}
   </section>
+
+  <div class="nouveau-divider my-2"><span class="text-xs text-loam/30 uppercase tracking-widest">✦</span></div>
 
   <!-- Curiosities -->
   <section class="mb-8">
@@ -244,6 +257,8 @@
     {% endif %}
   </section>
 
+  <div class="nouveau-divider my-2"><span class="text-xs text-loam/30 uppercase tracking-widest">✦</span></div>
+
   <!-- Milestones -->
   <section class="mb-8">
     <div class="flex items-center justify-between mb-3">
@@ -279,9 +294,84 @@
         {% endfor %}
       </ul>
     {% else %}
-      <p class="text-sm text-loam/50 italic">No milestones yet. Birthdays, anniversaries, important dates.</p>
+      <p class="font-display italic text-base text-loam/50">No milestones yet. Birthdays, anniversaries, important dates.</p>
     {% endif %}
   </section>
+
+  <div class="nouveau-divider my-2"><span class="text-xs text-loam/30 uppercase tracking-widest">✦</span></div>
+
+  <!-- Interest Groups -->
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-heading font-semibold text-lg text-bark">Interests
+        {% if plot.interest_groups %}<span class="ml-1 text-sm font-normal text-loam/40">({{ plot.interest_groups|length }})</span>{% endif %}
+      </h2>
+      <button
+        hx-get="/garden/{{ plot.id }}/interest-groups/new"
+        hx-target="#interest-group-form"
+        hx-swap="innerHTML"
+        class="text-sm text-warm-clay hover:text-bark transition-colors"
+      >+ Add group</button>
+    </div>
+    <div id="interest-group-form" class="mb-3"></div>
+    {% if plot.interest_groups %}
+      <div class="space-y-3" id="interest-groups-list">
+        {% for group in plot.interest_groups %}
+          <details id="ig-{{ group.id }}" class="bg-white rounded-card border border-light-sage nouveau-card group/ig" {% if group.fields %}open{% endif %}>
+            <summary class="px-4 py-3 cursor-pointer flex items-center gap-2 select-none">
+              <span class="text-loam/40 text-sm flex-shrink-0">{{ category_icons.get(group.group_type, '·') }}</span>
+              <span class="text-bark font-medium text-sm flex-1">{{ group.custom_label or group.group_type }}</span>
+              <span class="text-loam/30 text-xs flex-shrink-0">({{ group.fields|length }})</span>
+              <button
+                hx-delete="/garden/{{ plot.id }}/interest-groups/{{ group.id }}"
+                hx-target="#ig-{{ group.id }}"
+                hx-swap="outerHTML"
+                hx-confirm="Remove this interest group and all its fields?"
+                class="text-xs text-loam/20 hover:text-warm-clay transition-colors opacity-0 group-hover/ig:opacity-100 flex-shrink-0 ml-1"
+                onclick="event.stopPropagation()"
+              >✕</button>
+            </summary>
+
+            <div class="px-4 pb-4">
+              {% if group.fields %}
+                <dl class="grid grid-cols-2 gap-2 mb-3">
+                  {% for field in group.fields %}
+                    <div id="ig-field-{{ group.id }}-{{ loop.index0 }}" class="bg-sandstone rounded-lg p-3 group/field relative">
+                      <dt class="text-xs text-loam/50 uppercase tracking-wide">{{ field.key }}</dt>
+                      <dd class="mt-1 text-sm text-bark font-medium">{{ field.value }}</dd>
+                      <button
+                        hx-delete="/garden/{{ plot.id }}/interest-groups/{{ group.id }}/fields/{{ loop.index0 }}"
+                        hx-target="body"
+                        hx-swap="none"
+                        hx-on::after-request="window.location.reload()"
+                        hx-confirm="Delete this field?"
+                        class="absolute top-2 right-2 text-xs text-loam/20 hover:text-warm-clay transition-colors opacity-0 group-hover/field:opacity-100"
+                      >✕</button>
+                    </div>
+                  {% endfor %}
+                </dl>
+              {% else %}
+                <p class="text-sm text-loam/40 italic mb-3">No fields yet.</p>
+              {% endif %}
+
+              <div id="ig-field-form-container-{{ group.id }}">
+                <button
+                  hx-get="/garden/{{ plot.id }}/interest-groups/{{ group.id }}/fields/new"
+                  hx-target="#ig-field-form-container-{{ group.id }}"
+                  hx-swap="innerHTML"
+                  class="text-xs text-warm-clay hover:text-bark transition-colors"
+                >+ Add field</button>
+              </div>
+            </div>
+          </details>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-sm font-display italic text-loam/50">No interest groups yet. Music, books, travel — what do you share?</p>
+    {% endif %}
+  </section>
+
+  <div class="nouveau-divider my-2"><span class="text-xs text-loam/30 uppercase tracking-widest">✦</span></div>
 
   <!-- Conversation Starters (HTMX lazy load) -->
   <section class="mb-8">
@@ -298,6 +388,8 @@
       </div>
     </div>
   </section>
+
+  <div class="nouveau-divider my-2"><span class="text-xs text-loam/30 uppercase tracking-widest">✦</span></div>
 
   <!-- Conversations (recent journal entries + timeline link) -->
   <section>
@@ -320,7 +412,7 @@
     {% if recent_journal %}
       <div class="space-y-3">
         {% for entry in recent_journal %}
-          <a href="/journal/{{ entry.id }}" class="block bg-white rounded-card border border-light-sage p-4 hover:border-sage-green transition-colors group">
+          <a href="/journal/{{ entry.id }}" class="block bg-white rounded-card border border-light-sage nouveau-card p-4 hover:border-sage-green transition-colors group">
             <p class="text-sm text-loam leading-relaxed line-clamp-2">{{ entry.content }}</p>
             <div class="mt-2 flex items-center justify-between">
               <p class="text-xs text-loam/40">{{ entry.created_at.strftime('%b %d, %Y') }}</p>
@@ -338,9 +430,39 @@
         </a>
       {% endif %}
     {% else %}
-      <p class="text-sm text-loam/50 italic">No conversations logged yet.</p>
+      <p class="font-display italic text-base text-loam/50">No conversations logged yet.</p>
     {% endif %}
   </section>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function trellisPreviewPhoto(plotId) {
+  var input = document.getElementById('photo-input-' + plotId);
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var container = input.closest('.group\\/avatar');
+    var img = container.querySelector('img');
+    var placeholder = container.querySelector('div.rounded-full');
+    if (img) { img.src = e.target.result; }
+    else if (placeholder) {
+      var newImg = document.createElement('img');
+      newImg.src = e.target.result;
+      newImg.className = 'w-20 h-20 rounded-full object-cover shadow-sm';
+      placeholder.replaceWith(newImg);
+    }
+    document.getElementById('photo-preview-row-' + plotId).classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+function trellisResetPhoto(plotId) {
+  document.getElementById('photo-form-' + plotId).reset();
+  document.getElementById('photo-preview-row-' + plotId).classList.add('hidden');
+}
+</script>
 {% endblock %}

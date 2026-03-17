@@ -14,6 +14,8 @@ class PlotContext(BaseModel):
     curiosities: list[str]       # unresolved questions only
     milestones: list[dict]       # {"title", "date", "days_until", "is_recurring"}
     recent_journal: list[str]    # last 3 entries, truncated to 300 chars
+    interest_groups: list[dict] = []   # {"label": str, "fields": [{"key": str, "value": str}]}
+    reflection_mode: bool = False      # True when called after a journal entry is saved
 
 
 class PromptResult(BaseModel):

@@ -66,6 +66,22 @@ ALLOWED_IMAGE_TYPES: frozenset[str] = frozenset(_MIME_TO_EXT)
 MAX_IMAGE_BYTES: int = 2 * 1024 * 1024  # 2 MB
 
 
+def resize_image(data: bytes, max_size: int = 400) -> tuple[bytes, str]:
+    """Resize image to at most max_size x max_size, preserving aspect ratio.
+    Always outputs JPEG. Returns (resized_bytes, content_type).
+    """
+    import io
+
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(data))
+    img = img.convert("RGB")
+    img.thumbnail((max_size, max_size), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=88, optimize=True)
+    return buf.getvalue(), "image/jpeg"
+
+
 def upload_image(data: bytes, content_type: str, user_id: str, scope: str = "uploads") -> str:
     """Upload raw image bytes to S3 and return the public object URL.
 

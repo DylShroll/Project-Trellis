@@ -21,6 +21,8 @@ from app.modules.garden.models import RelationshipTag
 from app.modules.garden.schemas import (
     CuriosityCreate,
     DetailCreate,
+    InterestGroupAddField,
+    InterestGroupCreate,
     MilestoneCreate,
     PlotCreate,
     PlotUpdate,
@@ -32,7 +34,7 @@ from app.modules.journal.schemas import JournalEntryCreate, JournalEntryFilters
 from app.modules.notifications.repository import NotificationRepository
 from app.modules.prompts.cache import plot_prompt_key
 from app.modules.prompts.engine import PromptEngine
-from app.storage.s3 import ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, upload_image
+from app.storage.s3 import ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, delete_object, resize_image, upload_image
 
 router = APIRouter(tags=["ui"])
 
@@ -186,6 +188,7 @@ async def garden_edit(
 async def garden_timeline(
     plot_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
 ) -> Response:
+    import json as _json
     user = await _get_user(request, db)
     if not user:
         return _redirect("/auth/login")
@@ -199,12 +202,48 @@ async def garden_timeline(
         JournalEntryFilters(plot_id=plot_id),
         limit=500,
     )
+
+    # Build a unified timeline merging journal entries and milestones
+    from datetime import timezone as _tz
+    timeline_items: list[dict] = []
+    for entry in entries:
+        dt = entry.created_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=_tz.utc)
+        timeline_items.append({"type": "entry", "date": dt.date(), "dt": dt, "data": entry})
+    for m in plot.milestones:
+        timeline_items.append({"type": "milestone", "date": m.date, "dt": None, "data": m})
+    timeline_items.sort(key=lambda x: x["date"], reverse=True)
+
+    # Annotate gap_days relative to the previous (earlier) item
+    for i, item in enumerate(timeline_items):
+        next_item = timeline_items[i + 1] if i + 1 < len(timeline_items) else None
+        if next_item:
+            item["gap_days"] = (item["date"] - next_item["date"]).days
+        else:
+            item["gap_days"] = 0
+
+    # Pull one cached prompt for the top of the timeline (no API call)
+    timeline_prompt: str | None = None
+    redis = _get_redis_client()
+    try:
+        cached = await redis.get(plot_prompt_key(str(user.id), str(plot_id)))
+        if cached:
+            data = _json.loads(cached)
+            prompts = data.get("prompts", [])
+            timeline_prompt = prompts[0] if prompts else None
+    except Exception:
+        pass
+    finally:
+        await redis.aclose()
+
     nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("garden/timeline.html", {
         "request": request,
         "user": user,
         "plot": plot,
-        "entries": entries,
+        "timeline_items": timeline_items,
+        "timeline_prompt": timeline_prompt,
         **nav_ctx,
     })
 
@@ -369,9 +408,27 @@ async def garden_photo_upload(
         return _redirect(f"/garden/{plot_id}?photo_error=size")
 
     try:
-        url = upload_image(content, photo.content_type or "image/jpeg", str(user.id), scope="plots")
+        resized, resized_ct = resize_image(content)
     except Exception:
         return _redirect(f"/garden/{plot_id}?photo_error=upload")
+
+    try:
+        plot = await GardenService().get_plot(db, plot_id, user.id)
+    except NotFoundError:
+        return _redirect("/garden")
+
+    old_url = plot.photo_url
+    try:
+        url = upload_image(resized, resized_ct, str(user.id), scope="plots")
+    except Exception:
+        return _redirect(f"/garden/{plot_id}?photo_error=upload")
+
+    if old_url:
+        try:
+            old_key = old_url.split(".amazonaws.com/")[-1]
+            delete_object(old_key)
+        except Exception:
+            pass
 
     try:
         await GardenService().update_plot(db, plot_id, user.id, PlotUpdate(photo_url=url))
@@ -598,6 +655,112 @@ async def milestone_delete(
     return Response(status_code=200)
 
 
+# ── Interest Groups ───────────────────────────────────────────────────────────
+
+@router.get("/garden/{plot_id}/interest-groups/new", response_class=HTMLResponse)
+async def interest_group_form(
+    plot_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+    return templates.TemplateResponse("partials/interest_group_panel_form.html", {
+        "request": request,
+        "plot_id": plot_id,
+        "interest_categories": INTEREST_CATEGORIES,
+        "category_order": CATEGORY_ORDER,
+        "category_icons": CATEGORY_ICONS,
+    })
+
+
+@router.post("/garden/{plot_id}/interest-groups/new")
+async def interest_group_create(
+    plot_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    group_type: str = Form(...),
+    custom_label: str = Form(""),
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+    await GardenService().create_interest_group(
+        db, plot_id, user.id,
+        InterestGroupCreate(group_type=group_type, custom_label=custom_label or None),
+    )
+    redis = _get_redis_client()
+    await redis.delete(plot_prompt_key(str(user.id), str(plot_id)))
+    await redis.aclose()
+    return _hx_redirect(f"/garden/{plot_id}")
+
+
+@router.get("/garden/{plot_id}/interest-groups/{group_id}/fields/new", response_class=HTMLResponse)
+async def interest_group_field_form(
+    plot_id: UUID, group_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+    return templates.TemplateResponse("partials/interest_group_field_form.html", {
+        "request": request,
+        "plot_id": plot_id,
+        "group_id": group_id,
+    })
+
+
+@router.post("/garden/{plot_id}/interest-groups/{group_id}/fields/new")
+async def interest_group_field_create(
+    plot_id: UUID,
+    group_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    key: str = Form(...),
+    value: str = Form(...),
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+    try:
+        await GardenService().add_field_to_group(
+            db, plot_id, group_id, user.id, InterestGroupAddField(key=key, value=value)
+        )
+    except NotFoundError:
+        return _redirect("/garden")
+    redis = _get_redis_client()
+    await redis.delete(plot_prompt_key(str(user.id), str(plot_id)))
+    await redis.aclose()
+    return _hx_redirect(f"/garden/{plot_id}")
+
+
+@router.delete("/garden/{plot_id}/interest-groups/{group_id}/fields/{field_index}")
+async def interest_group_field_delete(
+    plot_id: UUID, group_id: UUID, field_index: int,
+    request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return Response(status_code=401)
+    try:
+        await GardenService().remove_field_from_group(db, plot_id, group_id, user.id, field_index)
+    except NotFoundError:
+        pass
+    return Response(status_code=200)
+
+
+@router.delete("/garden/{plot_id}/interest-groups/{group_id}")
+async def interest_group_delete(
+    plot_id: UUID, group_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return Response(status_code=401)
+    try:
+        await GardenService().delete_interest_group(db, plot_id, group_id, user.id)
+    except NotFoundError:
+        pass
+    return Response(status_code=200)
+
+
 # ── Journal pages ─────────────────────────────────────────────────────────────
 
 @router.get("/journal", response_class=HTMLResponse)
@@ -646,6 +809,7 @@ async def journal_create(
     content: str = Form(...),
     plot_id: str = Form(""),
     mood_tag: str = Form(""),
+    photo: UploadFile = File(None),
 ) -> Response:
     user = await _get_user(request, db)
     if not user:
@@ -658,15 +822,75 @@ async def journal_create(
         except ValueError:
             pass
 
+    media_urls: list[str] = []
+    if photo and photo.filename:
+        photo_content = await photo.read()
+        if photo.content_type in ALLOWED_IMAGE_TYPES and len(photo_content) <= MAX_IMAGE_BYTES:
+            try:
+                resized, resized_ct = resize_image(photo_content)
+                url = upload_image(resized, resized_ct, str(user.id), scope="journal")
+                media_urls = [url]
+            except Exception:
+                pass  # photo upload failure is non-blocking
+
     entry = await JournalRepository().create(
         db, user.id,
         JournalEntryCreate(
             content=content,
             plot_id=parsed_plot_id,
             mood_tag=mood_tag or None,
+            media_urls=media_urls,
         ),
     )
-    return _hx_redirect(f"/journal/{entry.id}")
+
+    # Set a short-lived reflection key so the detail page can surface a prompt
+    if parsed_plot_id:
+        redis = _get_redis_client()
+        await redis.set(
+            f"prompts:reflect:{user.id}:{parsed_plot_id}",
+            "1",
+            ex=600,  # 10 minutes
+        )
+        await redis.aclose()
+
+    return _redirect(f"/journal/{entry.id}")
+
+
+@router.get("/garden/{plot_id}/reflection-prompt", response_class=HTMLResponse)
+async def reflection_prompt(
+    plot_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+
+    redis = _get_redis_client()
+    try:
+        key = f"prompts:reflect:{user.id}:{plot_id}"
+        flag = await redis.get(key)
+        if not flag:
+            return HTMLResponse("")
+
+        engine = PromptEngine(redis=redis)
+        try:
+            context = await engine._assembler.for_plot(db, plot_id, user.id)
+            context.reflection_mode = True
+            prompts = await engine._call_claude(context, "reflection")
+            prompt_text = prompts[0] if prompts else None
+        except Exception:
+            prompt_text = None
+
+        await redis.delete(key)
+    finally:
+        await redis.aclose()
+
+    if not prompt_text:
+        return HTMLResponse("")
+
+    return templates.TemplateResponse("partials/reflection_prompt.html", {
+        "request": request,
+        "prompt": prompt_text,
+    })
 
 
 @router.get("/journal/{entry_id}", response_class=HTMLResponse)
@@ -834,9 +1058,22 @@ async def profile_avatar_upload(
         return _redirect("/profile?avatar_error=size")
 
     try:
-        url = upload_image(content, avatar.content_type or "image/jpeg", str(user.id), scope="avatars")
+        resized, resized_ct = resize_image(content)
     except Exception:
         return _redirect("/profile?avatar_error=upload")
+
+    old_url = user.avatar_url
+    try:
+        url = upload_image(resized, resized_ct, str(user.id), scope="avatars")
+    except Exception:
+        return _redirect("/profile?avatar_error=upload")
+
+    if old_url:
+        try:
+            old_key = old_url.split(".amazonaws.com/")[-1]
+            delete_object(old_key)
+        except Exception:
+            pass
 
     redis = _get_redis_client()
     service = AuthService(user_repo=UserRepository(), redis=redis)

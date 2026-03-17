@@ -5,11 +5,12 @@
 <div class="max-w-lg mx-auto px-4 py-8">
   <h1 class="font-heading font-bold text-2xl text-bark mb-6">New Journal Entry</h1>
 
-  <div class="bg-white rounded-card border border-light-sage p-8">
+  <div class="bg-white rounded-card border border-light-sage nouveau-card p-8">
     <form
-      hx-post="/journal/new"
-      hx-target="#form-error"
-      hx-swap="innerHTML"
+      action="/journal/new"
+      method="POST"
+      enctype="multipart/form-data"
+      id="journal-form"
       class="space-y-5"
     >
       <div id="form-error" class="text-warm-clay text-sm"></div>
@@ -56,6 +57,23 @@
         </select>
       </div>
 
+      <div>
+        <label class="block text-sm font-medium text-bark mb-1">Photo <span class="text-loam/40 font-normal">(optional)</span></label>
+        <div class="flex items-center gap-3">
+          <label for="journal-photo-input"
+                 class="inline-block text-sm bg-sandstone text-loam border border-light-sage px-4 py-2 rounded-lg
+                        hover:bg-light-sage transition-colors cursor-pointer">
+            Choose image
+          </label>
+          <input id="journal-photo-input" type="file" name="photo"
+                 accept="image/jpeg,image/png,image/webp"
+                 class="hidden"
+                 onchange="trellisPreviewJournalPhoto()" />
+          <span id="journal-photo-name" class="text-xs text-loam/50 truncate max-w-[160px]"></span>
+        </div>
+        <img id="journal-photo-preview" class="hidden mt-3 max-h-32 rounded-lg object-cover border border-light-sage" alt="Preview" />
+      </div>
+
       <div class="flex gap-3 pt-2">
         <button
           type="submit"
@@ -73,4 +91,22 @@
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function trellisPreviewJournalPhoto() {
+  var input = document.getElementById('journal-photo-input');
+  var file = input.files[0];
+  if (!file) return;
+  document.getElementById('journal-photo-name').textContent = file.name;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var preview = document.getElementById('journal-photo-preview');
+    preview.src = e.target.result;
+    preview.classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+</script>
 {% endblock %}

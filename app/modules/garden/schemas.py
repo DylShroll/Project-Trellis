@@ -110,6 +110,34 @@ class PlotListItem(BaseModel):
     created_at: datetime
 
 
+class InterestGroupFieldItem(BaseModel):
+    key: str = Field(min_length=1, max_length=100)
+    value: str = Field(min_length=1, max_length=500)
+
+
+class InterestGroupCreate(BaseModel):
+    group_type: str = Field(min_length=1, max_length=50)
+    custom_label: str | None = Field(default=None, max_length=100)
+
+
+class InterestGroupAddField(BaseModel):
+    key: str = Field(min_length=1, max_length=100)
+    value: str = Field(min_length=1, max_length=500)
+
+
+class InterestGroupRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    plot_id: UUID
+    group_type: str
+    custom_label: str | None
+    fields: list[dict]
+    sort_order: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class PlotRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -124,5 +152,6 @@ class PlotRead(BaseModel):
     details: list[DetailRead] = []
     curiosities: list[CuriosityRead] = []
     milestones: list[MilestoneRead] = []
+    interest_groups: list[InterestGroupRead] = []
     created_at: datetime
     updated_at: datetime

@@ -3,10 +3,11 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
-from app.modules.garden.models import Curiosity, Detail, Milestone, Plot, Story
+from app.modules.garden.models import Curiosity, Detail, InterestGroup, Milestone, Plot, Story
 from app.modules.garden.repository import (
     CuriosityRepository,
     DetailRepository,
+    InterestGroupRepository,
     MilestoneRepository,
     PlotRepository,
     StoryRepository,
@@ -15,6 +16,8 @@ from app.modules.garden.schemas import (
     CuriosityCreate,
     DetailCreate,
     DetailUpdate,
+    InterestGroupAddField,
+    InterestGroupCreate,
     MilestoneCreate,
     MilestoneUpdate,
     PlotCreate,
@@ -30,6 +33,7 @@ class GardenService:
         self.details = DetailRepository()
         self.curiosities = CuriosityRepository()
         self.milestones = MilestoneRepository()
+        self.interest_groups = InterestGroupRepository()
 
     # --- Plots ---
 
@@ -159,3 +163,48 @@ class GardenService:
         if not milestone:
             raise NotFoundError("Milestone not found")
         await self.milestones.delete(db, milestone)
+
+    # --- Interest Groups ---
+
+    async def create_interest_group(
+        self, db: AsyncSession, plot_id: UUID, user_id: UUID, data: InterestGroupCreate
+    ) -> InterestGroup:
+        await self.get_plot(db, plot_id, user_id)
+        return await self.interest_groups.create(db, plot_id, data)
+
+    async def add_field_to_group(
+        self,
+        db: AsyncSession,
+        plot_id: UUID,
+        group_id: UUID,
+        user_id: UUID,
+        field_data: InterestGroupAddField,
+    ) -> InterestGroup:
+        await self.get_plot(db, plot_id, user_id)
+        group = await self.interest_groups.get_by_id_for_plot(db, group_id, plot_id)
+        if not group:
+            raise NotFoundError("Interest group not found")
+        return await self.interest_groups.add_field(db, group, field_data)
+
+    async def remove_field_from_group(
+        self,
+        db: AsyncSession,
+        plot_id: UUID,
+        group_id: UUID,
+        user_id: UUID,
+        field_index: int,
+    ) -> InterestGroup:
+        await self.get_plot(db, plot_id, user_id)
+        group = await self.interest_groups.get_by_id_for_plot(db, group_id, plot_id)
+        if not group:
+            raise NotFoundError("Interest group not found")
+        return await self.interest_groups.remove_field(db, group, field_index)
+
+    async def delete_interest_group(
+        self, db: AsyncSession, plot_id: UUID, group_id: UUID, user_id: UUID
+    ) -> None:
+        await self.get_plot(db, plot_id, user_id)
+        group = await self.interest_groups.get_by_id_for_plot(db, group_id, plot_id)
+        if not group:
+            raise NotFoundError("Interest group not found")
+        await self.interest_groups.delete(db, group)

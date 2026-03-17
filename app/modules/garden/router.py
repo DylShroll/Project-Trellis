@@ -12,6 +12,9 @@ from app.modules.garden.schemas import (
     DetailCreate,
     DetailRead,
     DetailUpdate,
+    InterestGroupAddField,
+    InterestGroupCreate,
+    InterestGroupRead,
     MilestoneCreate,
     MilestoneRead,
     MilestoneUpdate,
@@ -209,3 +212,60 @@ async def delete_milestone(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await _svc.delete_milestone(db, plot_id, milestone_id, current_user.id)
+
+
+# ── Interest Groups ────────────────────────────────────────────────────────────
+
+@router.post(
+    "/{plot_id}/interest-groups",
+    response_model=InterestGroupRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_interest_group(
+    plot_id: UUID,
+    data: InterestGroupCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> object:
+    return await _svc.create_interest_group(db, plot_id, current_user.id, data)
+
+
+@router.post(
+    "/{plot_id}/interest-groups/{group_id}/fields",
+    response_model=InterestGroupRead,
+)
+async def add_interest_group_field(
+    plot_id: UUID,
+    group_id: UUID,
+    data: InterestGroupAddField,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> object:
+    return await _svc.add_field_to_group(db, plot_id, group_id, current_user.id, data)
+
+
+@router.delete(
+    "/{plot_id}/interest-groups/{group_id}/fields/{field_index}",
+    response_model=InterestGroupRead,
+)
+async def remove_interest_group_field(
+    plot_id: UUID,
+    group_id: UUID,
+    field_index: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> object:
+    return await _svc.remove_field_from_group(db, plot_id, group_id, current_user.id, field_index)
+
+
+@router.delete(
+    "/{plot_id}/interest-groups/{group_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_interest_group(
+    plot_id: UUID,
+    group_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await _svc.delete_interest_group(db, plot_id, group_id, current_user.id)

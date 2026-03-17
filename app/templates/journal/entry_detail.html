@@ -25,14 +25,33 @@
     >Delete</button>
   </div>
 
+  <!-- Reflection prompt (lazy-loaded if plot linked and recently logged) -->
+  {% if plot %}
+    <div id="reflection-prompt-slot"
+         hx-get="/garden/{{ plot.id }}/reflection-prompt"
+         hx-trigger="load"
+         hx-swap="outerHTML">
+    </div>
+  {% endif %}
+
   <!-- Content -->
-  <div class="bg-white rounded-card border border-light-sage p-6 mb-6">
+  <div class="bg-white rounded-card border border-light-sage nouveau-card p-6 mb-6">
     <p class="text-loam leading-relaxed whitespace-pre-wrap">{{ entry.content }}</p>
+    {% if entry.media_urls %}
+      <div class="mt-4 flex flex-wrap gap-3">
+        {% for url in entry.media_urls %}
+          <a href="{{ url }}" target="_blank" rel="noopener">
+            <img src="{{ url }}" alt="Attached photo"
+                 class="max-h-48 rounded-lg object-cover border border-light-sage hover:opacity-90 transition-opacity" />
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
   </div>
 
   <!-- Linked plot -->
   {% if plot %}
-    <div class="bg-sandstone rounded-card border border-light-sage p-5">
+    <div class="bg-sandstone rounded-card border border-light-sage nouveau-card p-5">
       <p class="text-xs text-loam/40 uppercase tracking-wide mb-3">Linked to</p>
       <a href="/garden/{{ plot.id }}" class="flex items-center gap-3 group">
         {% if plot.photo_url %}
