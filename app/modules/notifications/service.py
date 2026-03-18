@@ -33,10 +33,12 @@ class NotificationService:
     async def mark_read(
         self, db: AsyncSession, notification_id: UUID, user_id: UUID
     ) -> Notification:
+        # Fetch by both ID and user_id to prevent users from marking another user's notification read
         notification = await self.repo.get_by_id_for_user(db, notification_id, user_id)
         if not notification:
             raise NotFoundError("Notification not found")
         return await self.repo.mark_read(db, notification)
 
     async def mark_all_read(self, db: AsyncSession, user_id: UUID) -> int:
+        # Returns the count of updated rows so the caller can report how many were affected
         return await self.repo.mark_all_read(db, user_id)

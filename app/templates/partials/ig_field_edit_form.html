@@ -1,0 +1,32 @@
+{#
+  Inline edit form for a single interest-group field.
+  Submitted via HTMX; reloads the full page on success to refresh the field list.
+  Variables expected: plot_id, group_id, field_index, field (dict with "key" and "value")
+#}
+<div id="ig-field-{{ group_id }}-{{ field_index }}" class="bg-sandstone rounded-lg p-3">
+  <form hx-post="/garden/{{ plot_id }}/interest-groups/{{ group_id }}/fields/{{ field_index }}/edit"
+        hx-target="body"
+        hx-swap="none"
+        hx-on::after-request="window.location.reload()"
+        class="flex flex-col gap-2">
+    <input name="key" type="text" required maxlength="100"
+           value="{{ field.key }}"
+           class="w-full rounded border border-light-sage bg-white px-2 py-1 text-xs text-loam
+                  focus:outline-none focus:ring-1 focus:ring-sage-green" />
+    <input name="value" type="text" required maxlength="500"
+           value="{{ field.value }}"
+           class="w-full rounded border border-light-sage bg-white px-2 py-1 text-xs text-loam
+                  focus:outline-none focus:ring-1 focus:ring-sage-green" />
+    <div class="flex gap-2">
+      <button type="submit"
+              class="text-xs bg-deep-moss text-cream px-2 py-1 rounded-md hover:bg-bark transition-colors">
+        Save
+      </button>
+      <button type="button"
+              onclick="window.location.reload()"
+              class="text-xs bg-sandstone text-loam border border-light-sage px-2 py-1 rounded-md hover:bg-light-sage transition-colors">
+        Cancel
+      </button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,35 @@
+{#
+  Inline edit form for a single story.
+  Submitted via HTMX; on success the story card is replaced with the updated version.
+  Variables expected: plot_id, story (Story ORM object)
+#}
+<div id="story-{{ story.id }}" class="bg-white rounded-card border border-sage-green nouveau-card p-4">
+  <form hx-post="/garden/{{ plot_id }}/stories/{{ story.id }}/edit"
+        hx-target="#story-{{ story.id }}"
+        hx-swap="outerHTML"
+        class="space-y-3">
+    <textarea name="content" required rows="4"
+              class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
+                     focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent resize-none"
+    >{{ story.content }}</textarea>
+    <div>
+      <label class="block text-xs text-loam/60 mb-1">Tags <span class="text-loam/40 font-normal">(comma-separated)</span></label>
+      <input name="tags" type="text" maxlength="200"
+             value="{{ story.tags | join(', ') }}"
+             placeholder="e.g. funny, important, travel"
+             class="w-full rounded-lg border border-light-sage bg-sandstone px-3 py-2 text-sm text-loam
+                    focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent" />
+    </div>
+    <div class="flex gap-2">
+      <button type="submit"
+              class="bg-deep-moss text-cream px-4 py-2 rounded-lg text-sm font-medium hover:bg-bark transition-colors">
+        Save
+      </button>
+      <button type="button"
+              onclick="window.location.reload()"
+              class="bg-sandstone text-loam px-4 py-2 rounded-lg text-sm hover:bg-light-sage transition-colors">
+        Cancel
+      </button>
+    </div>
+  </form>
+</div>

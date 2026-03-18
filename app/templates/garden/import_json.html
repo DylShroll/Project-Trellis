@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Import · {{ plot.display_name }} · Trellis{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8">
+  <div class="mb-6">
+    <a href="/garden/{{ plot.id }}" class="text-sm text-loam/50 hover:text-bark transition-colors">← Back to {{ plot.display_name }}</a>
+    <h1 class="font-heading font-bold text-2xl text-bark mt-3">Import knowledge items</h1>
+    <p class="text-sm text-loam/60 mt-1">Paste JSON to bulk-add details, curiosities, stories, or milestones for {{ plot.display_name }}.</p>
+  </div>
+
+  {% if errors %}
+    <div class="mb-4 bg-warm-clay/10 border border-warm-clay/30 rounded-card px-5 py-4">
+      <p class="text-sm font-medium text-warm-clay mb-1">Import errors</p>
+      <ul class="text-sm text-warm-clay/80 list-disc list-inside space-y-1">
+        {% for err in errors %}<li>{{ err }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if imported %}
+    <div class="mb-4 bg-sage-green/10 border border-sage-green/30 rounded-card px-5 py-4">
+      <p class="text-sm text-sage-green font-medium">
+        Imported: {{ imported.details }} detail(s), {{ imported.curiosities }} curiosit(y/ies),
+        {{ imported.stories }} stor(y/ies), {{ imported.milestones }} milestone(s).
+      </p>
+    </div>
+  {% endif %}
+
+  <div class="bg-white rounded-card border border-light-sage nouveau-card p-8 space-y-6">
+    <form action="/garden/{{ plot.id }}/import" method="POST" class="space-y-5">
+
+      <div>
+        <label class="block text-sm font-medium text-bark mb-1">JSON payload</label>
+        <textarea name="payload" required rows="14"
+                  class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam font-mono
+                         focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent resize-y"
+                  placeholder='{"details": [...], "curiosities": [...], "stories": [...], "milestones": [...]}'
+        >{{ payload or '' }}</textarea>
+      </div>
+
+      <div class="flex gap-3">
+        <button type="submit"
+                class="flex-1 bg-deep-moss text-cream font-medium py-2.5 rounded-lg hover:bg-bark transition-colors text-sm">
+          Import
+        </button>
+        <a href="/garden/{{ plot.id }}"
+           class="flex-1 text-center bg-sandstone text-loam font-medium py-2.5 rounded-lg hover:bg-light-sage transition-colors text-sm">
+          Cancel
+        </a>
+      </div>
+    </form>
+
+    {# JSON schema reference for users #}
+    <details class="text-sm text-loam/60">
+      <summary class="cursor-pointer hover:text-bark transition-colors font-medium">JSON format reference</summary>
+      <pre class="mt-3 bg-sandstone rounded-lg p-4 text-xs overflow-x-auto leading-relaxed">
+{
+  "details": [
+    { "key": "Favourite colour", "value": "Forest green", "category": "Personal" }
+  ],
+  "curiosities": [
+    "What drew them to their current career?",
+    "Ask about their favourite childhood memory."
+  ],
+  "stories": [
+    "We first met at a conference in 2019 and bonded over bad coffee."
+  ],
+  "milestones": [
+    { "title": "Birthday", "date": "1990-04-15", "is_recurring": true },
+    { "title": "Graduated university", "date": "2013-06-01", "notes": "Computer Science" }
+  ]
+}</pre>
+    </details>
+  </div>
+</div>
+{% endblock %}

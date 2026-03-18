@@ -17,7 +17,9 @@ from app.workers.celery_app import celery
 # ── Reconnection nudges ───────────────────────────────────────────────────────
 
 async def _check_reconnection_nudges_async() -> None:
+    # 14-day threshold: plots with no contact this long qualify for a nudge
     cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+    # 7-day cooldown prevents spamming the user about the same plot every run
     cooldown = datetime.now(timezone.utc) - timedelta(days=7)
 
     async with AsyncSessionLocal() as db:
@@ -41,6 +43,7 @@ async def _check_reconnection_nudges_async() -> None:
                 )
             )
             recent_notifications = list(recent_check.scalars().all())
+            # Match on plot_id inside the JSON payload because there's no separate FK column
             already_notified = any(
                 str(n.payload.get("plot_id")) == str(plot.id)
                 for n in recent_notifications
@@ -49,6 +52,7 @@ async def _check_reconnection_nudges_async() -> None:
                 continue
 
             if plot.last_connected:
+                # Normalise naive datetimes stored without tzinfo to UTC before arithmetic
                 if plot.last_connected.tzinfo is None:
                     lc = plot.last_connected.replace(tzinfo=timezone.utc)
                 else:
@@ -57,6 +61,7 @@ async def _check_reconnection_nudges_async() -> None:
             else:
                 days_since = None
 
+            # Vary message copy depending on whether the user has ever logged a connection
             message = (
                 f"You haven't connected with {plot.display_name} in {days_since} days."
                 if days_since is not None
@@ -76,6 +81,7 @@ async def _check_reconnection_nudges_async() -> None:
             )
 
 
+# Celery task wraps the async impl with asyncio.run() because Celery workers are synchronous
 @celery.task(name="app.workers.tasks.notifications.check_reconnection_nudges")
 def check_reconnection_nudges() -> None:
     asyncio.run(_check_reconnection_nudges_async())
@@ -90,16 +96,19 @@ def _project_milestone_date(milestone_date: date) -> date:
         try:
             projected = milestone_date.replace(year=today.year + 1)
         except ValueError:
+            # Feb 29 on a non-leap year — clamp to Feb 28 to stay valid
             projected = projected.replace(day=28)
     return projected
 
 
 async def _check_milestone_reminders_async() -> None:
     today = date.today()
+    # 7-day lookahead gives users advance notice rather than same-day alerts
     window_end = today + timedelta(days=7)
     current_year = today.year
 
     async with AsyncSessionLocal() as db:
+        # Join to Plot so archived plots are excluded without a separate query
         result = await db.execute(
             select(Milestone).join(Plot).where(
                 Plot.is_archived == False  # noqa: E712
@@ -115,6 +124,7 @@ async def _check_milestone_reminders_async() -> None:
                 else milestone.date
             )
 
+            # Only notify if the milestone falls within today's 7-day window
             if not (today <= effective_date <= window_end):
                 continue
 
@@ -129,6 +139,7 @@ async def _check_milestone_reminders_async() -> None:
                 )
             )
             existing = list(existing_check.scalars().all())
+            # Match via payload JSON field because there's no dedicated FK column on Notification
             already_notified = any(
                 str(n.payload.get("milestone_id")) == str(milestone.id)
                 for n in existing
@@ -145,6 +156,7 @@ async def _check_milestone_reminders_async() -> None:
                 continue
 
             days_until = (effective_date - today).days
+            # Produce a different message for same-day vs. upcoming milestones
             message = (
                 f"{milestone.title} for {plot.display_name} is in {days_until} days."
                 if days_until > 0
@@ -167,6 +179,7 @@ async def _check_milestone_reminders_async() -> None:
             )
 
 
+# Celery task wraps the async impl with asyncio.run() because Celery workers are synchronous
 @celery.task(name="app.workers.tasks.notifications.check_milestone_reminders")
 def check_milestone_reminders() -> None:
     asyncio.run(_check_milestone_reminders_async())

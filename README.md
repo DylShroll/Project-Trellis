@@ -371,23 +371,6 @@ docker compose exec app alembic upgrade head
 # Access the app
 open http://localhost:8000
 ```
-
-### 9.2 AWS Architecture (Production)
-
-| Service | Usage |
-|---------|-------|
-| ECS Fargate | Application compute — 2 tasks min, auto-scaling to 8 |
-| RDS PostgreSQL | Primary database — Multi-AZ, encrypted, automated backups |
-| ElastiCache Redis | Caching + sessions + Celery broker |
-| S3 | Media storage (photos) + static assets |
-| CloudFront | CDN + HTTPS termination |
-| KMS | Encryption key management with auto-rotation |
-| Route 53 | DNS management with health checks |
-
-### 9.3 CI/CD Pipeline
-
-GitHub Actions: lint + type-check (ruff + mypy) → unit/integration tests (pytest) → SAST scanning (Bandit) → container build + push to ECR → Terraform plan/apply → ECS rolling deployment with automatic rollback on health check failure.
-
 ---
 
 ## 10. Development Roadmap

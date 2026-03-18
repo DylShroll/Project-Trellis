@@ -18,6 +18,7 @@ def create_app() -> FastAPI:
         title="Trellis",
         description="Cultivate Curiosity. Nurture Connection.",
         version="0.1.0",
+        # Swagger/ReDoc only exposed in development — hidden in production
         docs_url="/api/docs" if settings.is_development else None,
         redoc_url="/api/redoc" if settings.is_development else None,
     )
@@ -25,13 +26,14 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
-        allow_credentials=True,
+        allow_credentials=True,  # required for httponly cookie auth
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
     register_exception_handlers(app)
 
+    # ui_router first: its catch-all HTML routes must not shadow JSON API paths
     app.include_router(ui_router)
     app.include_router(auth_router)
     app.include_router(garden_router)

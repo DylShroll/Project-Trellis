@@ -5,6 +5,14 @@
 <div class="max-w-lg mx-auto px-4 py-8">
   <h1 class="font-heading font-bold text-2xl text-bark mb-6">New Journal Entry</h1>
 
+  {# If arriving from a curiosity card or conversation-starter link, show the prompt as context #}
+  {% if prompt_context %}
+  <div class="mb-6 bg-deep-moss/10 border-l-4 border-sage-green rounded-r-card px-5 py-4">
+    <p class="text-xs uppercase tracking-widest text-sage-green/70 mb-1">Prompt</p>
+    <p class="font-accent text-base text-bark leading-snug">{{ prompt_context }}</p>
+  </div>
+  {% endif %}
+
   <div class="bg-white rounded-card border border-light-sage nouveau-card p-8">
     <form
       action="/journal/new"

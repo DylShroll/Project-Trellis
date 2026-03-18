@@ -16,7 +16,7 @@ from app.modules.auth.models import User
 from app.modules.auth.repository import UserRepository
 from app.modules.auth.schemas import UserUpdate
 from app.modules.auth.service import AuthService
-from app.modules.garden.categories import CATEGORY_ICONS, CATEGORY_ORDER, INTEREST_CATEGORIES
+from app.modules.garden.categories import CATEGORY_ICONS, CATEGORY_ORDER, INTEREST_CATEGORIES, MILESTONE_SUGGESTIONS
 from app.modules.garden.models import RelationshipTag
 from app.modules.garden.schemas import (
     CuriosityCreate,
@@ -27,6 +27,7 @@ from app.modules.garden.schemas import (
     PlotCreate,
     PlotUpdate,
     StoryCreate,
+    StoryUpdate,
 )
 from app.modules.garden.service import GardenService
 from app.modules.journal.repository import JournalRepository
@@ -42,6 +43,7 @@ router = APIRouter(tags=["ui"])
 # ── Cookie auth helper ────────────────────────────────────────────────────────
 
 async def _get_user(request: Request, db: AsyncSession) -> User | None:
+    """Decode the httponly `access_token` cookie and return the active user, or None."""
     token = request.cookies.get("access_token")
     if not token:
         return None
@@ -59,18 +61,22 @@ async def _get_user(request: Request, db: AsyncSession) -> User | None:
 
 
 def _redirect(url: str, status_code: int = 303) -> Response:
+    # 303 See Other is correct for POST→redirect flows (PRG pattern)
     return Response(status_code=status_code, headers={"Location": url})
 
 
 def _hx_redirect(url: str) -> Response:
+    # HTMX uses the HX-Redirect header to navigate the full page after a successful mutation
     return Response(status_code=200, headers={"HX-Redirect": url})
 
 
 def _get_redis_client() -> aioredis.Redis:
+    # Each request creates its own client from the shared pool — always aclose() when done
     return aioredis.Redis(connection_pool=get_redis_pool())
 
 
 async def _get_nav_context(user: User | None, db: AsyncSession) -> dict:
+    """Return template variables needed by the nav bar (unread notification count)."""
     count = await NotificationRepository().count_unread(db, user.id) if user else 0
     return {"unread_count": count}
 
@@ -265,12 +271,14 @@ async def plot_prompts(
         return templates.TemplateResponse("partials/prompts_panel.html", {
             "request": request,
             "prompts": [],
+            "plot_id": plot_id,
             "error": True,
         })
     await redis.aclose()
     return templates.TemplateResponse("partials/prompts_panel.html", {
         "request": request,
         "prompts": result.prompts,
+        "plot_id": plot_id,
         "error": False,
     })
 
@@ -469,6 +477,60 @@ async def story_create(
     return _hx_redirect(f"/garden/{plot_id}")
 
 
+@router.get("/garden/{plot_id}/stories/{story_id}/edit", response_class=HTMLResponse)
+async def story_edit_form(
+    plot_id: UUID, story_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    """Return an inline edit form for a single story."""
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+    try:
+        plot = await GardenService().get_plot(db, plot_id, user.id)
+    except NotFoundError:
+        return HTMLResponse("", status_code=404)
+    story = next((s for s in plot.stories if s.id == story_id), None)
+    if not story:
+        return HTMLResponse("", status_code=404)
+    return templates.TemplateResponse("partials/story_edit_form.html", {
+        "request": request,
+        "plot_id": plot_id,
+        "story": story,
+    })
+
+
+@router.post("/garden/{plot_id}/stories/{story_id}/edit")
+async def story_edit_save(
+    plot_id: UUID,
+    story_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    content: str = Form(...),
+    tags: str = Form(""),
+) -> Response:
+    """Persist edited story content and tags; returns the updated story card HTML."""
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+    # Parse comma-separated tag string into a clean list
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+    try:
+        story = await GardenService().update_story(
+            db, plot_id, story_id, user.id, StoryUpdate(content=content, tags=tag_list)
+        )
+    except NotFoundError:
+        return _redirect("/garden")
+    redis = _get_redis_client()
+    await redis.delete(plot_prompt_key(str(user.id), str(plot_id)))
+    await redis.aclose()
+    # Return the updated story card HTML to replace the old one in-place
+    return templates.TemplateResponse("partials/story_card.html", {
+        "request": request,
+        "plot_id": plot_id,
+        "story": story,
+    })
+
+
 @router.delete("/garden/{plot_id}/stories/{story_id}")
 async def story_delete(
     plot_id: UUID, story_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
@@ -607,9 +669,17 @@ async def milestone_form(
     user = await _get_user(request, db)
     if not user:
         return HTMLResponse("", status_code=401)
+    # Fetch the plot so we can surface relationship-type-appropriate milestone suggestions
+    try:
+        plot = await GardenService().get_plot(db, plot_id, user.id)
+        rel_tag = plot.relationship_tag.value
+    except NotFoundError:
+        rel_tag = "friend"
+    suggestions = MILESTONE_SUGGESTIONS.get(rel_tag, MILESTONE_SUGGESTIONS.get("friend", []))
     return templates.TemplateResponse("partials/milestone_form.html", {
         "request": request,
         "plot_id": plot_id,
+        "suggestions": suggestions,
     })
 
 
@@ -732,6 +802,55 @@ async def interest_group_field_create(
     return _hx_redirect(f"/garden/{plot_id}")
 
 
+@router.get("/garden/{plot_id}/interest-groups/{group_id}/fields/{field_index}/edit", response_class=HTMLResponse)
+async def interest_group_field_edit_form(
+    plot_id: UUID, group_id: UUID, field_index: int,
+    request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    """Return an inline edit form for a single interest-group field."""
+    user = await _get_user(request, db)
+    if not user:
+        return HTMLResponse("", status_code=401)
+    try:
+        plot = await GardenService().get_plot(db, plot_id, user.id)
+    except NotFoundError:
+        return HTMLResponse("", status_code=404)
+    group = next((g for g in plot.interest_groups if g.id == group_id), None)
+    if not group or not (0 <= field_index < len(group.fields)):
+        return HTMLResponse("", status_code=404)
+    return templates.TemplateResponse("partials/ig_field_edit_form.html", {
+        "request": request,
+        "plot_id": plot_id,
+        "group_id": group_id,
+        "field_index": field_index,
+        "field": group.fields[field_index],
+    })
+
+
+@router.post("/garden/{plot_id}/interest-groups/{group_id}/fields/{field_index}/edit")
+async def interest_group_field_edit_save(
+    plot_id: UUID, group_id: UUID, field_index: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    key: str = Form(...),
+    value: str = Form(...),
+) -> Response:
+    """Persist an edited interest-group field."""
+    user = await _get_user(request, db)
+    if not user:
+        return Response(status_code=401)
+    try:
+        await GardenService().update_interest_group_field(
+            db, plot_id, group_id, user.id, field_index, key, value
+        )
+    except NotFoundError:
+        return _redirect("/garden")
+    redis = _get_redis_client()
+    await redis.delete(plot_prompt_key(str(user.id), str(plot_id)))
+    await redis.aclose()
+    return Response(status_code=200)
+
+
 @router.delete("/garden/{plot_id}/interest-groups/{group_id}/fields/{field_index}")
 async def interest_group_field_delete(
     plot_id: UUID, group_id: UUID, field_index: int,
@@ -759,6 +878,127 @@ async def interest_group_delete(
     except NotFoundError:
         pass
     return Response(status_code=200)
+
+
+# ── JSON import ───────────────────────────────────────────────────────────────
+
+@router.get("/garden/{plot_id}/import", response_class=HTMLResponse)
+async def garden_import_form(
+    plot_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+) -> Response:
+    """Show the JSON bulk-import form for a plot."""
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+    try:
+        plot = await GardenService().get_plot(db, plot_id, user.id)
+    except NotFoundError:
+        return _redirect("/garden")
+    nav_ctx = await _get_nav_context(user, db)
+    return templates.TemplateResponse("garden/import_json.html", {
+        "request": request,
+        "user": user,
+        "plot": plot,
+        **nav_ctx,
+    })
+
+
+@router.post("/garden/{plot_id}/import")
+async def garden_import_submit(
+    plot_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    payload: str = Form(...),
+) -> Response:
+    """Process a JSON import payload and bulk-create knowledge items for a plot."""
+    import json as _json
+
+    user = await _get_user(request, db)
+    if not user:
+        return _redirect("/auth/login")
+    try:
+        plot = await GardenService().get_plot(db, plot_id, user.id)
+    except NotFoundError:
+        return _redirect("/garden")
+
+    nav_ctx = await _get_nav_context(user, db)
+    errors: list[str] = []
+    imported = {"details": 0, "curiosities": 0, "stories": 0, "milestones": 0}
+
+    # Parse JSON
+    try:
+        data = _json.loads(payload)
+    except _json.JSONDecodeError as exc:
+        errors.append(f"Invalid JSON: {exc}")
+        return templates.TemplateResponse("garden/import_json.html", {
+            "request": request, "user": user, "plot": plot,
+            "errors": errors, "payload": payload, **nav_ctx,
+        })
+
+    garden = GardenService()
+
+    # Import details
+    for idx, item in enumerate(data.get("details", [])):
+        try:
+            await garden.add_detail(
+                db, plot_id, user.id,
+                DetailCreate(
+                    key=str(item["key"]),
+                    value=str(item["value"]),
+                    category=str(item["category"]) if item.get("category") else None,
+                ),
+            )
+            imported["details"] += 1
+        except Exception as exc:
+            errors.append(f"Detail #{idx + 1}: {exc}")
+
+    # Import curiosities (list of strings or dicts with "question" key)
+    for idx, item in enumerate(data.get("curiosities", [])):
+        try:
+            question = item if isinstance(item, str) else item["question"]
+            await garden.add_curiosity(
+                db, plot_id, user.id, CuriosityCreate(question=str(question))
+            )
+            imported["curiosities"] += 1
+        except Exception as exc:
+            errors.append(f"Curiosity #{idx + 1}: {exc}")
+
+    # Import stories (list of strings or dicts with "content" key)
+    for idx, item in enumerate(data.get("stories", [])):
+        try:
+            content = item if isinstance(item, str) else item["content"]
+            await garden.add_story(
+                db, plot_id, user.id, StoryCreate(content=str(content))
+            )
+            imported["stories"] += 1
+        except Exception as exc:
+            errors.append(f"Story #{idx + 1}: {exc}")
+
+    # Import milestones
+    for idx, item in enumerate(data.get("milestones", [])):
+        try:
+            await garden.add_milestone(
+                db, plot_id, user.id,
+                MilestoneCreate(
+                    title=str(item["title"]),
+                    date=item["date"],  # type: ignore[arg-type]
+                    notes=str(item["notes"]) if item.get("notes") else None,
+                    is_recurring=bool(item.get("is_recurring", False)),
+                ),
+            )
+            imported["milestones"] += 1
+        except Exception as exc:
+            errors.append(f"Milestone #{idx + 1}: {exc}")
+
+    # Invalidate prompt cache since context has changed
+    redis = _get_redis_client()
+    await redis.delete(plot_prompt_key(str(user.id), str(plot_id)))
+    await redis.aclose()
+
+    return templates.TemplateResponse("garden/import_json.html", {
+        "request": request, "user": user, "plot": plot,
+        "errors": errors, "imported": imported, **nav_ctx,
+    })
 
 
 # ── Journal pages ─────────────────────────────────────────────────────────────
@@ -792,12 +1032,15 @@ async def journal_new(request: Request, db: AsyncSession = Depends(get_db)) -> R
 
     plots = await GardenService().list_plots(db, user.id)
     selected_plot_id = request.query_params.get("plot_id", "")
+    # Pre-fill prompt context when arriving from a curiosity card or conversation starter
+    prompt_context = request.query_params.get("prompt", "")
     nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("journal/entry_form.html", {
         "request": request,
         "user": user,
         "plots": plots,
         "selected_plot_id": selected_plot_id,
+        "prompt_context": prompt_context,
         **nav_ctx,
     })
 

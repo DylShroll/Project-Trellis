@@ -16,11 +16,13 @@ from app.modules.garden.schemas import (
     PlotCreate,
     PlotUpdate,
     StoryCreate,
+    StoryUpdate,
 )
 
 
 class PlotRepository:
     def _with_relations(self):
+        # Eagerly load all child collections in a single round-trip (selectinload avoids N+1)
         return (
             selectinload(Plot.stories),
             selectinload(Plot.details),
@@ -52,13 +54,14 @@ class PlotRepository:
         plot = Plot(user_id=user_id, **data.model_dump())
         db.add(plot)
         await db.commit()
-        # Reload with relations
+        # Re-fetch with all relations so the returned object is fully populated
         return await self.get_by_id_for_user(db, plot.id, user_id)  # type: ignore[return-value]
 
     async def update(self, db: AsyncSession, plot: Plot, data: PlotUpdate) -> Plot:
         for key, value in data.model_dump(exclude_unset=True).items():
             setattr(plot, key, value)
         await db.commit()
+        # Re-fetch after commit so SQLAlchemy picks up server-side `updated_at` changes
         return await self.get_by_id_for_user(db, plot.id, plot.user_id)  # type: ignore[return-value]
 
     async def delete(self, db: AsyncSession, plot: Plot) -> None:
@@ -81,6 +84,14 @@ class StoryRepository:
             select(Story).where(Story.id == story_id, Story.plot_id == plot_id)
         )
         return result.scalar_one_or_none()
+
+    async def update(self, db: AsyncSession, story: Story, data: StoryUpdate) -> Story:
+        """Persist content and/or tag changes to a story."""
+        for key, value in data.model_dump(exclude_unset=True).items():
+            setattr(story, key, value)
+        await db.commit()
+        await db.refresh(story)
+        return story
 
     async def delete(self, db: AsyncSession, story: Story) -> None:
         await db.delete(story)
@@ -178,7 +189,7 @@ class InterestGroupRepository:
             plot_id=plot_id,
             group_type=data.group_type,
             custom_label=data.custom_label,
-            fields=[],
+            fields=[],  # start with empty JSONB array
         )
         db.add(group)
         await db.commit()
@@ -201,9 +212,24 @@ class InterestGroupRepository:
         current = list(group.fields or [])
         current.append({"key": field.key, "value": field.value})
         group.fields = current
+        # flag_modified is required to tell SQLAlchemy a JSONB column changed in-place
         attributes.flag_modified(group, "fields")
         await db.commit()
         await db.refresh(group)
+        return group
+
+    async def update_field(
+        self, db: AsyncSession, group: InterestGroup, field_index: int, key: str, value: str
+    ) -> InterestGroup:
+        """Replace the key/value of a single field inside the JSONB array."""
+        current = list(group.fields or [])
+        if 0 <= field_index < len(current):
+            current[field_index] = {"key": key, "value": value}
+            group.fields = current
+            # flag_modified is required to tell SQLAlchemy a JSONB column changed in-place
+            attributes.flag_modified(group, "fields")
+            await db.commit()
+            await db.refresh(group)
         return group
 
     async def remove_field(

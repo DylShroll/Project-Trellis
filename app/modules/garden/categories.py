@@ -110,6 +110,58 @@ INTEREST_CATEGORIES: dict[str, list[str]] = {
 # Display order for category sections
 CATEGORY_ORDER: list[str] = list(INTEREST_CATEGORIES.keys())
 
+# Suggested milestone titles per relationship type.
+# Each entry is (title, is_recurring).  Shown as one-click helpers in the milestone form.
+MILESTONE_SUGGESTIONS: dict[str, list[tuple[str, bool]]] = {
+    "partner": [
+        ("Birthday", True),
+        ("Anniversary", True),
+        ("First date", False),
+        ("Moved in together", False),
+        ("Engagement", False),
+        ("Wedding", False),
+    ],
+    "family": [
+        ("Birthday", True),
+        ("Wedding anniversary", True),
+        ("Graduation", False),
+        ("New baby", False),
+        ("Holiday tradition", True),
+    ],
+    "close_friend": [
+        ("Birthday", True),
+        ("Friendiversary", True),
+        ("Graduation", False),
+        ("Promotion", False),
+        ("Moving day", False),
+    ],
+    "friend": [
+        ("Birthday", True),
+        ("Meetup anniversary", True),
+    ],
+    "colleague": [
+        ("Work anniversary", True),
+        ("Birthday", True),
+        ("Project launch", False),
+        ("Promotion", False),
+    ],
+    "mentor": [
+        ("First meeting anniversary", True),
+        ("Career milestone", False),
+        ("Birthday", True),
+    ],
+    "community": [
+        ("Annual event", True),
+        ("First meetup", False),
+        ("Birthday", True),
+    ],
+    "custom": [
+        ("Birthday", True),
+        ("Anniversary", True),
+    ],
+}
+
+
 # Single-char icons per category (text-safe, no emoji dependency)
 CATEGORY_ICONS: dict[str, str] = {
     "Music": "♪",

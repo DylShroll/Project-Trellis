@@ -1,0 +1,35 @@
+{#
+  Reusable story card partial.
+  Used by plot_detail.html (included in loop) and story_edit_save route (HTMX swap).
+  Variables expected: plot_id, story (Story ORM object or StoryRead)
+#}
+<div id="story-{{ story.id }}" class="bg-white rounded-card border border-light-sage nouveau-card p-4 group">
+  <p class="text-sm text-loam leading-relaxed">{{ story.content }}</p>
+  {# Tag badges #}
+  {% if story.tags %}
+    <div class="mt-2 flex flex-wrap gap-1">
+      {% for tag in story.tags %}
+        <span class="text-xs px-2 py-0.5 rounded-full bg-light-sage text-sage-green">{{ tag }}</span>
+      {% endfor %}
+    </div>
+  {% endif %}
+  <div class="mt-2 flex items-center justify-between">
+    <p class="text-xs text-loam/40">{{ story.created_at.strftime('%b %d, %Y') }}</p>
+    <div class="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+      {# Edit button — swaps card with inline edit form #}
+      <button
+        hx-get="/garden/{{ plot_id }}/stories/{{ story.id }}/edit"
+        hx-target="#story-{{ story.id }}"
+        hx-swap="outerHTML"
+        class="text-xs text-loam/40 hover:text-bark transition-colors"
+      >Edit</button>
+      <button
+        hx-delete="/garden/{{ plot_id }}/stories/{{ story.id }}"
+        hx-target="#story-{{ story.id }}"
+        hx-swap="outerHTML"
+        hx-confirm="Delete this story?"
+        class="text-xs text-loam/30 hover:text-warm-clay transition-colors"
+      >Delete</button>
+    </div>
+  </div>
+</div>

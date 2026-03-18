@@ -3,8 +3,28 @@
 {% else %}
   <div class="space-y-3">
     {% for prompt in prompts %}
-      <div class="border-l-4 border-sage-green bg-white rounded-r-card px-5 py-4">
+      {# Each prompt card: click to open a pre-filled journal entry; button to save as a Curiosity #}
+      <div class="border-l-4 border-sage-green bg-white rounded-r-card px-5 py-4 group/prompt">
         <p class="font-accent text-base text-bark leading-snug">{{ prompt }}</p>
+        <div class="mt-3 flex items-center gap-4">
+          {# Link to journal new-entry form with the prompt text pre-filled as context #}
+          <a href="/journal/new?plot_id={{ plot_id }}&prompt={{ prompt | urlencode }}"
+             class="text-xs text-warm-clay hover:text-bark transition-colors">
+            Log a conversation →
+          </a>
+          {# Save this prompt as a Curiosity so it shows up in the Curiosities section #}
+          <form hx-post="/garden/{{ plot_id }}/curiosities/new"
+                hx-target="body"
+                hx-swap="none"
+                hx-on::after-request="window.location.reload()"
+                class="inline">
+            <input type="hidden" name="question" value="{{ prompt }}" />
+            <button type="submit"
+                    class="text-xs text-loam/40 hover:text-bark transition-colors opacity-0 group-hover/prompt:opacity-100">
+              + Save as Curiosity
+            </button>
+          </form>
+        </div>
       </div>
     {% endfor %}
   </div>

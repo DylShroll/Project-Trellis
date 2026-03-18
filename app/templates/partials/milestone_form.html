@@ -1,9 +1,32 @@
+{#
+  Milestone creation form.
+  Variables expected: plot_id, suggestions (list of (title, is_recurring) tuples)
+  Suggestions are one-click helpers that pre-fill the title field based on relationship type.
+#}
 <form
   hx-post="/garden/{{ plot_id }}/milestones/new"
   hx-target="#milestone-form"
   hx-swap="innerHTML"
   class="space-y-3 mb-4"
 >
+  {# Suggested milestone chips — click to pre-fill the title and recurring fields #}
+  {% if suggestions %}
+    <div class="flex flex-wrap gap-1.5 mb-1">
+      <span class="text-xs text-loam/40 self-center">Suggestions:</span>
+      {% for title, recurring in suggestions %}
+        <button type="button"
+                onclick="
+                  document.querySelector('[name=title]').value = {{ title | tojson }};
+                  document.querySelector('[name=is_recurring]').checked = {{ 'true' if recurring else 'false' }};
+                "
+                class="text-xs px-2.5 py-1 rounded-full border border-light-sage bg-sandstone text-loam
+                       hover:bg-light-sage hover:border-sage-green transition-colors">
+          {{ title }}{% if recurring %} ↻{% endif %}
+        </button>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   <div class="grid grid-cols-2 gap-3">
     <div>
       <label class="block text-xs text-loam/60 mb-1">Title</label>

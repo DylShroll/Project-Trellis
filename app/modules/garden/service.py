@@ -23,10 +23,13 @@ from app.modules.garden.schemas import (
     PlotCreate,
     PlotUpdate,
     StoryCreate,
+    StoryUpdate,
 )
 
 
 class GardenService:
+    """Orchestrates all garden domain logic.  Ownership checks happen here, not in repositories."""
+
     def __init__(self) -> None:
         self.plots = PlotRepository()
         self.stories = StoryRepository()
@@ -35,7 +38,7 @@ class GardenService:
         self.milestones = MilestoneRepository()
         self.interest_groups = InterestGroupRepository()
 
-    # --- Plots ---
+    # ── Plots ─────────────────────────────────────────────────────────────────
 
     async def list_plots(self, db: AsyncSession, user_id: UUID) -> list[Plot]:
         return await self.plots.list_for_user(db, user_id)
@@ -59,13 +62,22 @@ class GardenService:
         plot = await self.get_plot(db, plot_id, user_id)
         await self.plots.delete(db, plot)
 
-    # --- Stories ---
+    # ── Stories ───────────────────────────────────────────────────────────────
 
     async def add_story(
         self, db: AsyncSession, plot_id: UUID, user_id: UUID, data: StoryCreate
     ) -> Story:
         await self.get_plot(db, plot_id, user_id)  # ownership check
         return await self.stories.create(db, plot_id, data)
+
+    async def update_story(
+        self, db: AsyncSession, plot_id: UUID, story_id: UUID, user_id: UUID, data: StoryUpdate
+    ) -> Story:
+        await self.get_plot(db, plot_id, user_id)  # ownership check
+        story = await self.stories.get_by_id_for_plot(db, story_id, plot_id)
+        if not story:
+            raise NotFoundError("Story not found")
+        return await self.stories.update(db, story, data)
 
     async def delete_story(
         self, db: AsyncSession, plot_id: UUID, story_id: UUID, user_id: UUID
@@ -76,7 +88,7 @@ class GardenService:
             raise NotFoundError("Story not found")
         await self.stories.delete(db, story)
 
-    # --- Details ---
+    # ── Details ───────────────────────────────────────────────────────────────
 
     async def add_detail(
         self, db: AsyncSession, plot_id: UUID, user_id: UUID, data: DetailCreate
@@ -107,7 +119,7 @@ class GardenService:
             raise NotFoundError("Detail not found")
         await self.details.delete(db, detail)
 
-    # --- Curiosities ---
+    # ── Curiosities ───────────────────────────────────────────────────────────
 
     async def add_curiosity(
         self, db: AsyncSession, plot_id: UUID, user_id: UUID, data: CuriosityCreate
@@ -133,7 +145,7 @@ class GardenService:
             raise NotFoundError("Curiosity not found")
         await self.curiosities.delete(db, curiosity)
 
-    # --- Milestones ---
+    # ── Milestones ────────────────────────────────────────────────────────────
 
     async def add_milestone(
         self, db: AsyncSession, plot_id: UUID, user_id: UUID, data: MilestoneCreate
@@ -164,7 +176,7 @@ class GardenService:
             raise NotFoundError("Milestone not found")
         await self.milestones.delete(db, milestone)
 
-    # --- Interest Groups ---
+    # ── Interest Groups ───────────────────────────────────────────────────────
 
     async def create_interest_group(
         self, db: AsyncSession, plot_id: UUID, user_id: UUID, data: InterestGroupCreate
@@ -185,6 +197,22 @@ class GardenService:
         if not group:
             raise NotFoundError("Interest group not found")
         return await self.interest_groups.add_field(db, group, field_data)
+
+    async def update_interest_group_field(
+        self,
+        db: AsyncSession,
+        plot_id: UUID,
+        group_id: UUID,
+        user_id: UUID,
+        field_index: int,
+        key: str,
+        value: str,
+    ) -> InterestGroup:
+        await self.get_plot(db, plot_id, user_id)
+        group = await self.interest_groups.get_by_id_for_plot(db, group_id, plot_id)
+        if not group:
+            raise NotFoundError("Interest group not found")
+        return await self.interest_groups.update_field(db, group, field_index, key, value)
 
     async def remove_field_from_group(
         self,

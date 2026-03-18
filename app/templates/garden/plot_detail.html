@@ -76,6 +76,8 @@
 
     <div class="flex items-center gap-3 flex-shrink-0">
       <a href="/garden/{{ plot.id }}/edit" class="text-sm text-loam/50 hover:text-bark transition-colors">Edit</a>
+      {# Bulk JSON import for details, curiosities, stories, milestones #}
+      <a href="/garden/{{ plot.id }}/import" class="text-sm text-loam/50 hover:text-bark transition-colors">Import</a>
       <button
         hx-delete="/garden/{{ plot.id }}"
         hx-confirm="Remove {{ plot.display_name }} from your garden? This cannot be undone."
@@ -104,19 +106,9 @@
     {% if plot.stories %}
       <div class="space-y-3">
         {% for story in plot.stories %}
-          <div id="story-{{ story.id }}" class="bg-white rounded-card border border-light-sage nouveau-card p-4 group">
-            <p class="text-sm text-loam leading-relaxed">{{ story.content }}</p>
-            <div class="mt-2 flex items-center justify-between">
-              <p class="text-xs text-loam/40">{{ story.created_at.strftime('%b %d, %Y') }}</p>
-              <button
-                hx-delete="/garden/{{ plot.id }}/stories/{{ story.id }}"
-                hx-target="#story-{{ story.id }}"
-                hx-swap="outerHTML"
-                hx-confirm="Delete this story?"
-                class="text-xs text-loam/30 hover:text-warm-clay transition-colors opacity-0 group-hover:opacity-100"
-              >Delete</button>
-            </div>
-          </div>
+          {# Delegate story rendering to the reusable story_card partial #}
+          {% set plot_id = plot.id %}
+          {% include "partials/story_card.html" %}
         {% endfor %}
       </div>
     {% else %}
@@ -336,17 +328,27 @@
               {% if group.fields %}
                 <dl class="grid grid-cols-2 gap-2 mb-3">
                   {% for field in group.fields %}
+                    {# Field card — hover reveals Edit and Delete actions #}
                     <div id="ig-field-{{ group.id }}-{{ loop.index0 }}" class="bg-sandstone rounded-lg p-3 group/field relative">
                       <dt class="text-xs text-loam/50 uppercase tracking-wide">{{ field.key }}</dt>
                       <dd class="mt-1 text-sm text-bark font-medium">{{ field.value }}</dd>
-                      <button
-                        hx-delete="/garden/{{ plot.id }}/interest-groups/{{ group.id }}/fields/{{ loop.index0 }}"
-                        hx-target="body"
-                        hx-swap="none"
-                        hx-on::after-request="window.location.reload()"
-                        hx-confirm="Delete this field?"
-                        class="absolute top-2 right-2 text-xs text-loam/20 hover:text-warm-clay transition-colors opacity-0 group-hover/field:opacity-100"
-                      >✕</button>
+                      <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/field:opacity-100 transition-opacity">
+                        {# Inline edit: swaps the whole card with an edit form #}
+                        <button
+                          hx-get="/garden/{{ plot.id }}/interest-groups/{{ group.id }}/fields/{{ loop.index0 }}/edit"
+                          hx-target="#ig-field-{{ group.id }}-{{ loop.index0 }}"
+                          hx-swap="outerHTML"
+                          class="text-xs text-loam/40 hover:text-bark transition-colors"
+                        >Edit</button>
+                        <button
+                          hx-delete="/garden/{{ plot.id }}/interest-groups/{{ group.id }}/fields/{{ loop.index0 }}"
+                          hx-target="body"
+                          hx-swap="none"
+                          hx-on::after-request="window.location.reload()"
+                          hx-confirm="Delete this field?"
+                          class="text-xs text-loam/20 hover:text-warm-clay transition-colors"
+                        >✕</button>
+                      </div>
                     </div>
                   {% endfor %}
                 </dl>

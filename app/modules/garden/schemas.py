@@ -10,12 +10,18 @@ class StoryCreate(BaseModel):
     content: str = Field(min_length=1)
 
 
+class StoryUpdate(BaseModel):
+    content: str | None = Field(default=None, min_length=1)
+    tags: list[str] | None = None
+
+
 class StoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     plot_id: UUID
     content: str
+    tags: list[str] = []
     created_at: datetime
     updated_at: datetime
 
