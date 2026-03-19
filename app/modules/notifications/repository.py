@@ -25,6 +25,7 @@ class NotificationRepository:
     async def get_by_id_for_user(
         self, db: AsyncSession, notification_id: UUID, user_id: UUID
     ) -> Notification | None:
+        # user_id scope prevents one user from reading another's notification
         result = await db.execute(
             select(Notification).where(
                 Notification.id == notification_id, Notification.user_id == user_id
@@ -41,6 +42,7 @@ class NotificationRepository:
             .order_by(Notification.created_at.desc())
         )
         if unread_only:
+            # SQLAlchemy requires == False (not `is False`) for mapped boolean columns
             query = query.where(Notification.is_read == False)  # noqa: E712
         query = query.limit(limit).offset(offset)
         result = await db.execute(query)
@@ -53,6 +55,7 @@ class NotificationRepository:
         return notification
 
     async def count_unread(self, db: AsyncSession, user_id: UUID) -> int:
+        # Used by the nav badge — must be fast; user_id is indexed
         result = await db.execute(
             select(func.count()).where(
                 Notification.user_id == user_id,
@@ -63,10 +66,12 @@ class NotificationRepository:
 
     async def mark_all_read(self, db: AsyncSession, user_id: UUID) -> int:
         from sqlalchemy import update
+        # Bulk UPDATE avoids loading every notification into memory
         result = await db.execute(
             update(Notification)
             .where(Notification.user_id == user_id, Notification.is_read == False)  # noqa: E712
             .values(is_read=True)
         )
         await db.commit()
+        # rowcount lets the caller know how many rows were affected
         return result.rowcount

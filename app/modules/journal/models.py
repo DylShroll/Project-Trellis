@@ -18,6 +18,7 @@ class JournalEntry(Base):
         nullable=False,
         index=True,
     )
+    # SET NULL rather than CASCADE so deleting a plot doesn't wipe the user's journal history
     plot_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("plots.id", ondelete="SET NULL"),
@@ -25,7 +26,9 @@ class JournalEntry(Base):
         index=True,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    # mood_tag is a free-form label (e.g. "reflective", "grateful") — no enum constraint
     mood_tag: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # JSONB array of S3 URLs for photos attached to this entry
     media_urls: Mapped[list] = mapped_column(JSONB, server_default="[]", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -38,4 +41,5 @@ class JournalEntry(Base):
     )
 
     user: Mapped["User"] = relationship(back_populates="journal_entries")  # type: ignore[name-defined]
+    # back_populates not declared on Plot — journal entries are accessed via JournalRepository
     plot: Mapped["Plot | None"] = relationship()  # type: ignore[name-defined]

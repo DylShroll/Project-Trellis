@@ -26,6 +26,7 @@ class JournalRepository:
     async def get_by_id_for_user(
         self, db: AsyncSession, entry_id: UUID, user_id: UUID
     ) -> JournalEntry | None:
+        # Always scope by user_id to prevent cross-user access
         result = await db.execute(
             select(JournalEntry).where(
                 JournalEntry.id == entry_id, JournalEntry.user_id == user_id
@@ -41,11 +42,13 @@ class JournalRepository:
         limit: int = 20,
         offset: int = 0,
     ) -> list[JournalEntry]:
+        # Base query: newest entries first
         query = (
             select(JournalEntry)
             .where(JournalEntry.user_id == user_id)
             .order_by(JournalEntry.created_at.desc())
         )
+        # Each filter is additive (AND) — omitted filters don't restrict the result set
         if filters.plot_id:
             query = query.where(JournalEntry.plot_id == filters.plot_id)
         if filters.mood_tag:
@@ -61,6 +64,7 @@ class JournalRepository:
     async def count_for_plot(
         self, db: AsyncSession, user_id: UUID, plot_id: UUID
     ) -> int:
+        # Used by the detail page to decide whether to show "View all" link
         result = await db.execute(
             select(func.count()).where(
                 JournalEntry.user_id == user_id,

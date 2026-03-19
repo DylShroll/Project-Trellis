@@ -38,6 +38,7 @@ class AuthService:
         self, db: AsyncSession, email: str, password: str
     ) -> tuple[User, TokenResponse]:
         user = await self.user_repo.get_by_email(db, email)
+        # Return the same error for unknown email and wrong password to prevent email enumeration
         if not user or not user.hashed_password:
             raise UnauthorizedError("Invalid email or password")
         if not verify_password(password, user.hashed_password):
@@ -48,12 +49,8 @@ class AuthService:
         return user, tokens
 
     async def refresh(self, db: AsyncSession, refresh_token: str) -> TokenResponse:
-        # Find the user_id by scanning for this token hash across all users
-        # (we encode user_id in the token to avoid a full scan)
-        # Token format: {user_id}:{random} — we embed user_id at generation time
-        # For simplicity in v1, we store user_id in the token value in Redis
-        # Redis key: refresh:{user_id}:{token_hash} with value = ""
-        # We can't look up by hash alone without user_id, so we store a reverse lookup too
+        # Reverse-lookup: the client sends the raw token; we hash it to find the Redis key.
+        # A second "refresh_reverse" key maps hash → user_id so we don't need to scan all users.
         reverse_key = f"refresh_reverse:{_hash_token(refresh_token)}"
         user_id_str = await self.redis.get(reverse_key)
         if not user_id_str:
@@ -68,18 +65,17 @@ class AuthService:
         if not user or not user.is_active:
             raise UnauthorizedError("User not found or inactive")
 
-        # Rotate: delete old token, issue new pair
+        # Token rotation: delete the used token before issuing a fresh pair to prevent reuse
         await self.redis.delete(redis_key, reverse_key)
         return await self._issue_tokens(user)
 
     async def logout(self, user: User) -> None:
-        # Delete all refresh tokens for this user
+        # Scan-and-delete all refresh tokens for this user so every device is signed out
         pattern = f"refresh:{user.id}:*"
         cursor = 0
         while True:
             cursor, keys = await self.redis.scan(cursor, match=pattern, count=100)
             if keys:
-                # Also delete reverse lookups
                 pipe = self.redis.pipeline()
                 for key in keys:
                     pipe.delete(key)
@@ -92,7 +88,7 @@ class AuthService:
     ) -> User:
         updates = data.model_dump(exclude_unset=True)
         if not updates:
-            return user
+            return user  # nothing to write; skip the DB round-trip
         return await self.user_repo.update(db, user, **updates)
 
     async def _issue_tokens(self, user: User) -> TokenResponse:
@@ -102,8 +98,10 @@ class AuthService:
         ttl = settings.refresh_token_expire_days * 86400
 
         redis_key = refresh_token_redis_key(str(user.id), token_hash)
+        # Reverse lookup key shares the same TTL so both expire together
         reverse_key = f"refresh_reverse:{token_hash}"
 
+        # Pipeline ensures both keys are written atomically in one round-trip
         pipe = self.redis.pipeline()
         pipe.set(redis_key, "", ex=ttl)
         pipe.set(reverse_key, str(user.id), ex=ttl)
@@ -117,4 +115,5 @@ class AuthService:
 
 
 def _hash_token(token: str) -> str:
+    # SHA-256 so the raw token is never stored in Redis — a stolen Redis dump can't be replayed
     return hashlib.sha256(token.encode()).hexdigest()

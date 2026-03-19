@@ -16,6 +16,7 @@ from app.modules.journal.service import JournalService
 
 router = APIRouter(prefix="/api/v1/journal", tags=["journal"])
 
+# Module-level singleton — JournalService holds no mutable state
 _svc = JournalService()
 
 
@@ -30,6 +31,7 @@ async def create_entry(
 
 @router.get("/", response_model=list[JournalEntryRead])
 async def list_entries(
+    # Query parameters map directly to JournalEntryFilters fields
     plot_id: UUID | None = Query(default=None),
     mood_tag: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),

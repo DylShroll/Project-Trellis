@@ -13,6 +13,13 @@ from app.modules.journal.schemas import (
 
 
 class JournalService:
+    """Thin service layer over JournalRepository.
+
+    Ownership checks (user_id scoping) happen in the repository via
+    `get_by_id_for_user`; this layer raises NotFoundError for callers to
+    handle rather than returning None.
+    """
+
     def __init__(self) -> None:
         self.repo = JournalRepository()
 
@@ -46,6 +53,7 @@ class JournalService:
         user_id: UUID,
         data: JournalEntryUpdate,
     ) -> JournalEntry:
+        # get_entry raises NotFoundError if the entry doesn't belong to this user
         entry = await self.get_entry(db, entry_id, user_id)
         return await self.repo.update(db, entry, data)
 

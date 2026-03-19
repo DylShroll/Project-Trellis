@@ -25,6 +25,16 @@ async def list_notifications(
     return await _svc.list_notifications(db, current_user.id, unread_only, limit, offset)
 
 
+# NOTE: /read-all must be declared BEFORE /{notification_id}/read so FastAPI
+# doesn't try to match the literal "read-all" as a UUID notification_id.
+@router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_all_read(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await _svc.mark_all_read(db, current_user.id)
+
+
 @router.post("/{notification_id}/read", response_model=NotificationRead)
 async def mark_read(
     notification_id: UUID,
@@ -32,11 +42,3 @@ async def mark_read(
     db: AsyncSession = Depends(get_db),
 ) -> object:
     return await _svc.mark_read(db, notification_id, current_user.id)
-
-
-@router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
-async def mark_all_read(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> None:
-    await _svc.mark_all_read(db, current_user.id)

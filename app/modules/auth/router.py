@@ -21,6 +21,7 @@ from app.modules.auth.schemas import (
 from app.modules.auth.service import AuthService
 
 _settings = get_settings()
+# Cookie max-age matches access token lifetime so they expire together
 _COOKIE_MAX_AGE = _settings.access_token_expire_minutes * 60
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -29,6 +30,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def _service(redis: aioredis.Redis) -> AuthService:
     return AuthService(UserRepository(), redis)
 
+
+# ── JSON API endpoints (Bearer token clients) ─────────────────────────────────
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
 async def register(
@@ -50,6 +53,8 @@ async def login(
     return tokens
 
 
+# ── HTMX / browser form endpoints (set httponly cookie) ───────────────────────
+
 @router.post("/login/web", include_in_schema=False)
 async def login_web(
     email: str = Form(...),
@@ -61,11 +66,14 @@ async def login_web(
     try:
         _, tokens = await _service(redis).login(db, email, password)
     except UnauthorizedError:
+        # Return an HTMX-friendly inline error fragment instead of a redirect
         return HTMLResponse('<span class="text-warm-clay text-sm">Invalid email or password.</span>')
     response = Response(status_code=200, headers={"HX-Redirect": "/"})
     response.set_cookie(
         "access_token", tokens.access_token,
-        max_age=_COOKIE_MAX_AGE, httponly=True, samesite="lax",
+        max_age=_COOKIE_MAX_AGE,
+        httponly=True,   # not accessible via JS — mitigates XSS token theft
+        samesite="lax",  # protects against CSRF while allowing normal navigation
     )
     return response
 
@@ -90,7 +98,9 @@ async def register_web(
     response = Response(status_code=200, headers={"HX-Redirect": "/"})
     response.set_cookie(
         "access_token", tokens.access_token,
-        max_age=_COOKIE_MAX_AGE, httponly=True, samesite="lax",
+        max_age=_COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="lax",
     )
     return response
 
@@ -101,10 +111,12 @@ async def login_form(
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),
 ) -> TokenResponse:
-    """OAuth2 password flow for Swagger UI compatibility."""
+    """OAuth2 password flow — exists solely so Swagger UI's 'Authorize' button works."""
     _, tokens = await _service(redis).login(db, form.username, form.password)
     return tokens
 
+
+# ── Token management ──────────────────────────────────────────────────────────
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
@@ -120,8 +132,11 @@ async def logout(
     current_user: User = Depends(get_current_user),
     redis: aioredis.Redis = Depends(get_redis),
 ) -> None:
+    # Revokes all refresh tokens for this user across all devices
     await _service(redis).logout(current_user)
 
+
+# ── Profile ───────────────────────────────────────────────────────────────────
 
 @router.get("/me", response_model=UserRead)
 async def get_me(current_user: User = Depends(get_current_user)) -> User:

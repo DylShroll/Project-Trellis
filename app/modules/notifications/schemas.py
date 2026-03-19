@@ -12,6 +12,7 @@ class NotificationRead(BaseModel):
     id: UUID
     user_id: UUID
     type: NotificationType
+    # payload is type-specific (e.g. {"plot_id": "...", "message": "..."})
     payload: dict
     is_read: bool
     scheduled_at: datetime | None
@@ -20,4 +21,5 @@ class NotificationRead(BaseModel):
 
 
 class NotificationUpdate(BaseModel):
+    # Currently only the read-state is updatable via the API
     is_read: bool

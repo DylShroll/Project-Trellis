@@ -29,10 +29,14 @@ from app.modules.garden.service import GardenService
 
 router = APIRouter(prefix="/api/v1/garden", tags=["garden"])
 
+# Module-level singleton; GardenService holds no mutable state so this is safe
 _svc = GardenService()
 
 
 # ── Plots ──────────────────────────────────────────────────────────────────────
+# NotFoundError / UnauthorizedError raised by the service propagate to the
+# registered exception handler in app/core/exceptions.py and return the correct
+# HTTP status automatically — no try/except needed here.
 
 @router.get("/", response_model=list[PlotListItem])
 async def list_plots(
@@ -215,6 +219,8 @@ async def delete_milestone(
 
 
 # ── Interest Groups ────────────────────────────────────────────────────────────
+# Fields are stored as a JSONB array inside each group row.
+# The field_index path parameter is a positional index into that array.
 
 @router.post(
     "/{plot_id}/interest-groups",

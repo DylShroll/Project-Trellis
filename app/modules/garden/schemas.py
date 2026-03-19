@@ -11,6 +11,7 @@ class StoryCreate(BaseModel):
 
 
 class StoryUpdate(BaseModel):
+    # All fields optional — callers send only what changed
     content: str | None = Field(default=None, min_length=1)
     tags: list[str] | None = None
 
@@ -29,6 +30,7 @@ class StoryRead(BaseModel):
 class DetailCreate(BaseModel):
     key: str = Field(min_length=1, max_length=100)
     value: str = Field(min_length=1, max_length=500)
+    # category groups details into accordion sections in the UI (e.g. "Music", "Food & Drink")
     category: str | None = Field(default=None, max_length=50)
 
 
@@ -66,6 +68,7 @@ class MilestoneCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     date: Date
     notes: str | None = None
+    # When True, Celery will generate an annual reminder for this milestone
     is_recurring: bool = False
 
 
@@ -91,10 +94,12 @@ class MilestoneRead(BaseModel):
 class PlotCreate(BaseModel):
     display_name: str = Field(min_length=1, max_length=100)
     relationship_tag: RelationshipTag = RelationshipTag.FRIEND
+    # custom_tag is only used when relationship_tag == CUSTOM
     custom_tag: str | None = Field(default=None, max_length=50)
 
 
 class PlotUpdate(BaseModel):
+    # All fields optional — sent as PATCH; unset fields are ignored in the repository
     display_name: str | None = Field(default=None, min_length=1, max_length=100)
     relationship_tag: RelationshipTag | None = None
     custom_tag: str | None = None
@@ -104,6 +109,7 @@ class PlotUpdate(BaseModel):
 
 
 class PlotListItem(BaseModel):
+    """Lightweight summary used by the garden list page — avoids loading child collections."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -122,7 +128,9 @@ class InterestGroupFieldItem(BaseModel):
 
 
 class InterestGroupCreate(BaseModel):
+    # group_type should match a key in INTEREST_CATEGORIES (e.g. "Music", "Books")
     group_type: str = Field(min_length=1, max_length=50)
+    # custom_label overrides the group_type display name in the UI
     custom_label: str | None = Field(default=None, max_length=100)
 
 
@@ -145,6 +153,7 @@ class InterestGroupRead(BaseModel):
 
 
 class PlotRead(BaseModel):
+    """Full plot representation including all child collections, used on the detail page."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID

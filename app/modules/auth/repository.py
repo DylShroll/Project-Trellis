@@ -13,6 +13,7 @@ class UserRepository:
         return result.scalar_one_or_none()
 
     async def get_by_email(self, db: AsyncSession, email: str) -> User | None:
+        # Email index makes this lookup O(log n); used on every login
         result = await db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
@@ -28,6 +29,7 @@ class UserRepository:
         return user
 
     async def update(self, db: AsyncSession, user: User, **kwargs) -> User:
+        # **kwargs lets callers update any subset of columns without a dedicated schema per field
         for key, value in kwargs.items():
             setattr(user, key, value)
         await db.commit()
