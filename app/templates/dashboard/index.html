@@ -71,6 +71,82 @@
         <p class="text-sm text-loam/60">No journal entries yet.</p>
       {% endif %}
     </div>
+
+    <!-- Needs Attention -->
+    {% if needs_attention %}
+    <div class="bg-white rounded-card border border-warm-clay/20 p-6 nouveau-card">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="font-heading font-semibold text-bark">Needs Attention</h2>
+          <p class="text-xs text-loam/50 mt-0.5">You haven't connected with these people recently</p>
+        </div>
+        <a href="/garden" class="text-sm text-warm-clay hover:text-bark transition-colors">View garden →</a>
+      </div>
+      <div class="space-y-3">
+        {% for plot in needs_attention %}
+          <div class="flex items-center gap-3">
+            {% if plot.photo_url %}
+              <img src="{{ plot.photo_url }}" alt="{{ plot.display_name }}" class="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+            {% else %}
+              <div class="w-9 h-9 rounded-full bg-light-sage flex items-center justify-center flex-shrink-0">
+                <span class="text-sage-green font-heading font-bold text-sm">{{ plot.display_name[0] }}</span>
+              </div>
+            {% endif %}
+            <div class="flex-1 min-w-0">
+              <p class="font-heading font-semibold text-bark text-sm truncate">{{ plot.display_name }}</p>
+              <p class="text-xs text-loam/50 capitalize">
+                {{ plot.relationship_tag.value.replace('_', ' ') }}
+                {% if plot.last_connected %}
+                  · last connected {{ plot.last_connected.strftime('%b %d') }}
+                {% else %}
+                  · never connected
+                {% endif %}
+              </p>
+            </div>
+            <a href="/garden/{{ plot.id }}" class="text-warm-clay hover:text-bark text-xs font-medium flex-shrink-0 transition-colors">Visit →</a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Upcoming Milestones -->
+    {% if upcoming_milestones %}
+    <div class="bg-white rounded-card border border-light-sage p-6 nouveau-card">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="font-heading font-semibold text-bark">Upcoming</h2>
+          <p class="text-xs text-loam/50 mt-0.5">Milestones in the next 30 days</p>
+        </div>
+      </div>
+      <div class="space-y-3">
+        {% for item in upcoming_milestones %}
+          <div class="flex items-center gap-3">
+            <!-- Day badge -->
+            <div class="w-10 h-10 rounded-lg bg-sandstone border border-light-sage flex flex-col items-center justify-center flex-shrink-0">
+              <span class="text-xs text-loam/50 leading-none font-display">{{ item.date.strftime('%b') }}</span>
+              <span class="text-sm font-heading font-bold text-bark leading-tight">{{ item.date.strftime('%-d') }}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-heading font-semibold text-bark text-sm truncate">{{ item.title }}</p>
+              <p class="text-xs text-loam/50 truncate">
+                {{ item.plot.display_name }}
+                {% if item.days_until == 0 %}
+                  · <span class="text-warm-clay font-medium">Today</span>
+                {% elif item.days_until == 1 %}
+                  · <span class="text-warm-clay font-medium">Tomorrow</span>
+                {% else %}
+                  · in {{ item.days_until }} days
+                {% endif %}
+              </p>
+            </div>
+            <a href="/garden/{{ item.plot.id }}" class="text-warm-clay hover:text-bark text-xs font-medium flex-shrink-0 transition-colors">View →</a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
   </div>
 </div>
 {% endblock %}

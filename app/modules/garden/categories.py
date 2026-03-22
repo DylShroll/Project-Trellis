@@ -139,21 +139,62 @@ MILESTONE_SUGGESTIONS: dict[str, list[tuple[str, bool]]] = {
         ("Birthday", True),
         ("Meetup anniversary", True),
     ],
+    "acquaintance": [
+        ("Birthday", True),
+        ("First proper conversation", False),
+    ],
+    "childhood_friend": [
+        ("Birthday", True),
+        ("Friendiversary", True),
+        ("Reunion", False),
+        ("School graduation", False),
+    ],
+    "online_friend": [
+        ("Birthday", True),
+        ("First message anniversary", True),
+        ("First time meeting in person", False),
+    ],
+    "neighbour": [
+        ("Birthday", True),
+        ("Move-in date", False),
+        ("Annual street event", True),
+    ],
     "colleague": [
         ("Work anniversary", True),
         ("Birthday", True),
         ("Project launch", False),
         ("Promotion", False),
     ],
+    "collaborator": [
+        ("Project start", False),
+        ("Project launch", False),
+        ("Birthday", True),
+        ("Collaboration anniversary", True),
+    ],
     "mentor": [
         ("First meeting anniversary", True),
         ("Career milestone", False),
         ("Birthday", True),
     ],
+    "mentee": [
+        ("First meeting anniversary", True),
+        ("Their career milestone", False),
+        ("Birthday", True),
+        ("Graduation", False),
+    ],
     "community": [
         ("Annual event", True),
         ("First meetup", False),
         ("Birthday", True),
+    ],
+    "ex_partner": [
+        ("Birthday", True),
+        ("First met", False),
+    ],
+    "inspiration": [
+        ("Birthday", True),
+        ("Discovered their work", False),
+        ("Saw them live / in person", False),
     ],
     "custom": [
         ("Birthday", True),

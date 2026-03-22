@@ -6,7 +6,13 @@
   <div class="flex items-center justify-between mb-6">
     <div>
       <h1 class="font-heading font-bold text-2xl text-bark">Your Garden</h1>
-      <p class="text-sm text-loam/60 mt-1">{{ plots|length }} {% if plots|length == 1 %}person{% else %}people{% endif %} in your life</p>
+      <p class="text-sm text-loam/60 mt-1">
+        {% if active_tag %}
+          {{ plots|length }} {% if plots|length == 1 %}person{% else %}people{% endif %} · <a href="/garden" class="text-warm-clay hover:text-bark transition-colors">show all {{ all_plots_count }}</a>
+        {% else %}
+          {{ all_plots_count }} {% if all_plots_count == 1 %}person{% else %}people{% endif %} in your life
+        {% endif %}
+      </p>
     </div>
     <a
       href="/garden/new"
@@ -16,11 +22,45 @@
     </a>
   </div>
 
+  <!-- Relationship type filter tabs (only shown when there are plots) -->
+  {% if tag_counts %}
+  <div class="flex flex-wrap gap-2 mb-6">
+    <a
+      href="/garden"
+      class="px-3 py-1 rounded-full text-xs font-medium transition-colors
+             {% if not active_tag %}bg-bark text-cream{% else %}bg-sandstone text-loam hover:bg-light-sage{% endif %}"
+    >
+      All <span class="opacity-60">({{ all_plots_count }})</span>
+    </a>
+    {% set ordered_tags = ['partner', 'family', 'close_friend', 'friend', 'acquaintance', 'childhood_friend', 'online_friend', 'neighbour', 'colleague', 'collaborator', 'mentor', 'mentee', 'community', 'ex_partner', 'inspiration', 'custom'] %}
+    {% for tag in ordered_tags %}
+      {% if tag in tag_counts %}
+      <a
+        href="/garden?tag={{ tag }}"
+        class="px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize
+               {% if active_tag == tag %}bg-bark text-cream{% else %}bg-sandstone text-loam hover:bg-light-sage{% endif %}"
+      >
+        {{ tag.replace('_', ' ') }} <span class="opacity-60">({{ tag_counts[tag] }})</span>
+      </a>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if plots %}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {% for plot in plots %}
         {% include "partials/plot_card.html" %}
       {% endfor %}
+    </div>
+  {% elif active_tag %}
+    <!-- Filtered empty state -->
+    <div class="text-center py-16">
+      <h2 class="font-heading font-semibold text-xl text-bark">No one here yet</h2>
+      <p class="mt-2 text-sm text-loam/60">
+        No {{ active_tag.replace('_', ' ') }} relationships added.
+      </p>
+      <a href="/garden" class="inline-block mt-4 text-sm text-warm-clay hover:text-bark transition-colors">Clear filter →</a>
     </div>
   {% else %}
     <!-- Empty state -->

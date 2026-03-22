@@ -15,9 +15,17 @@ class RelationshipTag(str, enum.Enum):
     FAMILY = "family"
     CLOSE_FRIEND = "close_friend"
     FRIEND = "friend"
+    ACQUAINTANCE = "acquaintance"
+    CHILDHOOD_FRIEND = "childhood_friend"
+    ONLINE_FRIEND = "online_friend"
+    NEIGHBOUR = "neighbour"
     COLLEAGUE = "colleague"
+    COLLABORATOR = "collaborator"
     MENTOR = "mentor"
+    MENTEE = "mentee"
     COMMUNITY = "community"
+    EX_PARTNER = "ex_partner"
+    INSPIRATION = "inspiration"
     CUSTOM = "custom"
 
 

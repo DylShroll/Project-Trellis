@@ -108,6 +108,8 @@ async def logout() -> Response:
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    from datetime import date as _date, timezone as _tz
+
     user = await _get_user(request, db)
     if not user:
         return _redirect("/auth/login")
@@ -127,6 +129,48 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)) -> Res
     finally:
         await redis.aclose()
 
+    # ── Needs Attention: active plots not contacted in 14+ days ──────────────
+    now = datetime.now(timezone.utc)
+    def _days_since_contact(plot) -> int:
+        if plot.last_connected is None:
+            return 9999
+        dt = plot.last_connected
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (now - dt).days
+
+    needs_attention = sorted(
+        [p for p in plots if not p.is_archived and _days_since_contact(p) > 14],
+        key=_days_since_contact,
+        reverse=True,
+    )[:4]
+
+    # ── Upcoming Milestones: any milestone within the next 30 days ────────────
+    today = _date.today()
+    upcoming: list[dict] = []
+    for plot in plots:
+        if plot.is_archived:
+            continue
+        for m in plot.milestones:
+            if m.is_recurring:
+                projected = m.date.replace(year=today.year)
+                if projected < today:
+                    try:
+                        projected = m.date.replace(year=today.year + 1)
+                    except ValueError:
+                        projected = projected.replace(day=28)
+            else:
+                projected = m.date
+            days_until = (projected - today).days
+            if 0 <= days_until <= 30:
+                upcoming.append({
+                    "plot": plot,
+                    "title": m.title,
+                    "date": projected,
+                    "days_until": days_until,
+                })
+    upcoming.sort(key=lambda x: x["days_until"])
+
     nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("dashboard/index.html", {
         "request": request,
@@ -134,6 +178,8 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)) -> Res
         "recent_plots": plots[:3],
         "recent_entries": recent_entries,
         "daily_prompt": daily_prompt,
+        "needs_attention": needs_attention,
+        "upcoming_milestones": upcoming[:5],
         **nav_ctx,
     })
 
@@ -146,12 +192,30 @@ async def garden_index(request: Request, db: AsyncSession = Depends(get_db)) -> 
     if not user:
         return _redirect("/auth/login")
 
-    plots = await GardenService().list_plots(db, user.id)
+    all_plots = await GardenService().list_plots(db, user.id)
+
+    # Build a count map of tags present so the filter UI knows which tabs to show
+    tag_counts: dict[str, int] = {}
+    for p in all_plots:
+        tag = p.relationship_tag.value
+        tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+    # Optional single-tag filter via ?tag=
+    active_tag = request.query_params.get("tag", "")
+    if active_tag and active_tag in tag_counts:
+        plots = [p for p in all_plots if p.relationship_tag.value == active_tag]
+    else:
+        active_tag = ""
+        plots = all_plots
+
     nav_ctx = await _get_nav_context(user, db)
     return templates.TemplateResponse("garden/index.html", {
         "request": request,
         "user": user,
         "plots": plots,
+        "all_plots_count": len(all_plots),
+        "tag_counts": tag_counts,
+        "active_tag": active_tag,
         **nav_ctx,
     })
 

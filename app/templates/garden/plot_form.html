@@ -38,11 +38,20 @@
           class="w-full rounded-lg border border-light-sage bg-sandstone px-4 py-2.5 text-sm text-loam
                  focus:outline-none focus:ring-2 focus:ring-sage-green focus:border-transparent"
         >
-          {% set tags = ['partner', 'family', 'close_friend', 'friend', 'colleague', 'mentor', 'community', 'custom'] %}
-          {% for tag in tags %}
-            <option value="{{ tag }}" {% if plot and plot.relationship_tag.value == tag %}selected{% endif %}>
-              {{ tag.replace('_', ' ').title() }}
-            </option>
+          {% set tag_groups = [
+            ('— Close', ['partner', 'family', 'close_friend', 'friend']),
+            ('— Social', ['acquaintance', 'childhood_friend', 'online_friend', 'neighbour']),
+            ('— Professional', ['colleague', 'collaborator', 'mentor', 'mentee']),
+            ('— Other', ['community', 'ex_partner', 'inspiration', 'custom']),
+          ] %}
+          {% for group_label, tags in tag_groups %}
+            <optgroup label="{{ group_label }}">
+              {% for tag in tags %}
+                <option value="{{ tag }}" {% if plot and plot.relationship_tag.value == tag %}selected{% endif %}>
+                  {{ tag.replace('_', ' ').title() }}
+                </option>
+              {% endfor %}
+            </optgroup>
           {% endfor %}
         </select>
       </div>
