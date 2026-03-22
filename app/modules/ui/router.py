@@ -152,23 +152,29 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)) -> Res
         if plot.is_archived:
             continue
         for m in plot.milestones:
-            if m.is_recurring:
-                projected = m.date.replace(year=today.year)
-                if projected < today:
+            try:
+                if m.is_recurring:
                     try:
-                        projected = m.date.replace(year=today.year + 1)
+                        projected = m.date.replace(year=today.year)
                     except ValueError:
-                        projected = projected.replace(day=28)
-            else:
-                projected = m.date
-            days_until = (projected - today).days
-            if 0 <= days_until <= 30:
-                upcoming.append({
-                    "plot": plot,
-                    "title": m.title,
-                    "date": projected,
-                    "days_until": days_until,
-                })
+                        projected = m.date.replace(year=today.year, day=28)
+                    if projected < today:
+                        try:
+                            projected = m.date.replace(year=today.year + 1)
+                        except ValueError:
+                            projected = m.date.replace(year=today.year + 1, day=28)
+                else:
+                    projected = m.date
+                days_until = (projected - today).days
+                if 0 <= days_until <= 30:
+                    upcoming.append({
+                        "plot": plot,
+                        "title": m.title,
+                        "date": projected,
+                        "days_until": days_until,
+                    })
+            except Exception:
+                continue
     upcoming.sort(key=lambda x: x["days_until"])
 
     nav_ctx = await _get_nav_context(user, db)
